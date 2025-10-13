@@ -25,14 +25,13 @@ public class VehiclesService {
     public VehicleResponse create(VehicleCreateRequest req) {
         var station = stationRepository.findById(req.getStationId())
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 stationId"));
-
         if (vehicleRepository.existsByStationIdAndCallSign(req.getStationId(), req.getCallSign())) {
             throw new IllegalStateException("동일 소방서에 이미 존재하는 callSign");
         }
 
         Vehicle v = Vehicle.builder()
                 .stationId(req.getStationId())
-                .sido(req.getSido())
+                .sido(req.getSido()) // 프론트에서 받은 시도 그대로 저장
                 .callSign(req.getCallSign())
                 .typeName(req.getTypeName())
                 .capacity(req.getCapacity())
@@ -43,7 +42,7 @@ public class VehiclesService {
                 .rallyPoint(req.getRallyPoint() == null ? 0 : req.getRallyPoint())
                 .build();
 
-        Vehicle saved = vehicleRepository.save(v);
+        var saved = vehicleRepository.save(v);
         return toResponse(saved);
     }
 
@@ -58,17 +57,30 @@ public class VehiclesService {
         if (typeName != null && !typeName.isBlank()) p.add(cb.equal(root.get("typeName"), typeName));
         if (callSignLike != null && !callSignLike.isBlank()) p.add(cb.like(root.get("callSign"), "%" + callSignLike + "%"));
 
-        cq.where(p.toArray(Predicate[]::new)).orderBy(cb.asc(root.get("stationId")), cb.asc(root.get("callSign")));
+        cq.where(p.toArray(Predicate[]::new))
+                .orderBy(cb.asc(root.get("stationId")), cb.asc(root.get("callSign")));
+
         return em.createQuery(cq).getResultList().stream()
-                .map(v -> new VehicleListItem(v.getId(), v.getStationId(), v.getSido(),
-                        v.getTypeName(), v.getCallSign(), v.getStatus(), v.getRallyPoint()))
+                .map(v -> new VehicleListItem(
+                        v.getId(),
+                        v.getStationId(),
+                        v.getSido(),
+                        v.getTypeName(),
+                        v.getCallSign(),
+                        v.getStatus(),
+                        v.getRallyPoint(),
+                        // ▼ 추가된 4개 필드 매핑
+                        v.getCapacity(),
+                        v.getPersonnel(),
+                        v.getAvlNumber(),
+                        v.getPsLteNumber()
+                ))
                 .toList();
     }
 
     @Transactional
     public VehicleResponse update(Long id, VehicleUpdateRequest req) {
-        Vehicle v = vehicleRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("vehicle 없음"));
-
+        var v = vehicleRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("vehicle 없음"));
         if (req.getCallSign() != null && !req.getCallSign().isBlank()) {
             String newCall = req.getCallSign();
             if (!newCall.equals(v.getCallSign())) {
@@ -82,23 +94,20 @@ public class VehiclesService {
         if (req.getPersonnel() != null) v.setPersonnel(req.getPersonnel());
         if (req.getAvlNumber() != null) v.setAvlNumber(req.getAvlNumber());
         if (req.getPsLteNumber() != null) v.setPsLteNumber(req.getPsLteNumber());
-
         return toResponse(v);
     }
 
     @Transactional
     public VehicleResponse updateStatus(Long id, Integer status) {
-        if (status == null || status < 0 || status > 2) {
-            throw new IllegalArgumentException("status는 0/1/2만 허용");
-        }
-        Vehicle v = vehicleRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("vehicle 없음"));
+        if (status == null || status < 0 || status > 2) throw new IllegalArgumentException("status는 0/1/2만 허용");
+        var v = vehicleRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("vehicle 없음"));
         v.setStatus(status);
         return toResponse(v);
     }
 
     @Transactional
     public VehicleResponse updateAssembly(Long id, Integer rallyPoint) {
-        Vehicle v = vehicleRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("vehicle 없음"));
+        var v = vehicleRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("vehicle 없음"));
         if (rallyPoint == null) {
             v.setRallyPoint(v.getRallyPoint() != null && v.getRallyPoint() == 1 ? 0 : 1);
         } else {
@@ -110,7 +119,7 @@ public class VehiclesService {
 
     private static VehicleResponse toResponse(Vehicle v) {
         return new VehicleResponse(
-                v.getId(), v.getStationId(), v.getSido(), // 시도 포함
+                v.getId(), v.getStationId(), v.getSido(),
                 v.getTypeName(), v.getCallSign(),
                 v.getCapacity(), v.getPersonnel(), v.getAvlNumber(), v.getPsLteNumber(),
                 v.getStatus(), v.getRallyPoint(), v.getCreatedAt(), v.getUpdatedAt()
