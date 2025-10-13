@@ -62,7 +62,7 @@ public class GpsController {
         return ResponseEntity.ok(gpsService.lastLocations(stationId, vehicleIds));
     }
 
-    /** ✅ 지도 드래그 영역 차량 및 통계 조회 */
+    /** 지도 드래그 영역 차량 및 통계 조회 */
     @PostMapping("/map/stats")
     @Operation(summary = "지도 드래그 영역 차량 및 통계 조회", description = "활동(status=1) 차량만 포함")
     public ResponseEntity<MapStatsResponse> mapStats(@RequestBody MapStatsRequest req) {

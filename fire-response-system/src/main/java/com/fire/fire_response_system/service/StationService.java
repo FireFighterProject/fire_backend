@@ -13,21 +13,27 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class StationService {
+
     private final StationRepository stationRepository;
 
-    public List<StationResponse> list() {
-        return stationRepository.findAll().stream()
+    @Transactional(readOnly = true)
+    public List<StationResponse> list(String sido) {
+        var stations = (sido == null || sido.isBlank())
+                ? stationRepository.findAll()
+                : stationRepository.findBySido(sido);
+
+        return stations.stream()
                 .map(s -> new StationResponse(s.getId(), s.getSido(), s.getName(), s.getAddress()))
                 .toList();
     }
 
     @Transactional
     public StationResponse create(StationCreateRequest req) {
-        // sido가 비어있으면 name만, 있으면 sido+name으로 중복 방지
-        boolean dup = (req.getSido() == null || req.getSido().isBlank())
-                ? stationRepository.existsByName(req.getName())
-                : stationRepository.existsBySidoAndName(req.getSido(), req.getName());
-        if (dup) throw new IllegalStateException("이미 존재하는 소방서 이름입니다.");
+        // sido+name 기준 중복 방지
+        boolean dup = stationRepository.existsBySidoAndName(req.getSido(), req.getName());
+        if (dup) {
+            throw new IllegalStateException("이미 존재하는 소방서입니다: " + req.getSido() + " " + req.getName());
+        }
 
         Station saved = stationRepository.save(
                 Station.builder()
@@ -36,6 +42,7 @@ public class StationService {
                         .address(req.getAddress())
                         .build()
         );
+
         return new StationResponse(saved.getId(), saved.getSido(), saved.getName(), saved.getAddress());
     }
 }

@@ -9,6 +9,9 @@ public class VehicleCreateRequest {
     @NotNull(message = "stationId 필수")
     private Long stationId;
 
+    @NotBlank
+    private String sido;
+
     @NotBlank(message = "callSign 필수")
     private String callSign;
 
