@@ -37,6 +37,16 @@ public class StationService {
     }
 
     /**
+     * 소방서 단건 조회
+     */
+    @Transactional(readOnly = true)
+    public StationResponse getOne(Long id) {
+        Station s = stationRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 소방서 ID: " + id));
+        return new StationResponse(s.getId(), s.getSido(), s.getName(), s.getAddress());
+    }
+
+    /**
      * 소방서 등록
      * sido + name 기준으로 중복 방지
      */
@@ -51,9 +61,7 @@ public class StationService {
 
         boolean dup = stationRepository.existsBySidoAndName(req.getSido(), req.getName());
         if (dup) {
-            throw new IllegalStateException(
-                    "이미 존재하는 소방서입니다: " + req.getSido() + " " + req.getName()
-            );
+            throw new IllegalStateException("이미 존재하는 소방서입니다: " + req.getSido() + " " + req.getName());
         }
 
         Station saved = stationRepository.save(
@@ -64,11 +72,6 @@ public class StationService {
                         .build()
         );
 
-        return new StationResponse(
-                saved.getId(),
-                saved.getSido(),
-                saved.getName(),
-                saved.getAddress()
-        );
+        return new StationResponse(saved.getId(), saved.getSido(), saved.getName(), saved.getAddress());
     }
 }

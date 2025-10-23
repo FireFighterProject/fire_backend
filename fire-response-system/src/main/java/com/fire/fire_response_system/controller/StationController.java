@@ -26,14 +26,26 @@ public class StationController {
     @GetMapping
     @Operation(
             summary = "소방서 목록 조회",
-            description = "전체 소방서 목록을 반환합니다. "
-                    + "sido 파라미터를 지정하면 해당 지역의 소방서만 반환합니다."
+            description = "전체 소방서 목록을 반환합니다. sido 파라미터를 지정하면 해당 지역의 소방서만 반환합니다."
     )
     public ResponseEntity<List<StationResponse>> list(
-            @Parameter(description = "시도명 (예: 경북, 서울 등)", example = "경북")
+            @Parameter(description = "시도명 (예: 경상북도, 서울특별시 등)", example = "경북")
             @RequestParam(required = false) String sido
     ) {
         return ResponseEntity.ok(stationService.list(sido));
+    }
+
+    /**
+     * 소방서 단건 조회
+     * 예: /api/fire-stations/3  → { id, sido, name, address }
+     */
+    @GetMapping("/{id}")
+    @Operation(summary = "소방서 단건 조회", description = "ID로 소방서를 조회하여 지역(시도)과 소방서명을 반환합니다.")
+    public ResponseEntity<StationResponse> getOne(
+            @Parameter(description = "소방서 ID", example = "3")
+            @PathVariable Long id
+    ) {
+        return ResponseEntity.ok(stationService.getOne(id));
     }
 
     /**
