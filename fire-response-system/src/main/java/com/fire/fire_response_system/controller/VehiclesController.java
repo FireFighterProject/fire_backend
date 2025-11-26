@@ -29,6 +29,9 @@ public class VehiclesController {
     private final VehicleQueryService vehicleQueryService;
     private final VehiclesService vehiclesService;
 
+    // -------------------------------
+    // 1) 차종 코드 목록 조회
+    // -------------------------------
     @GetMapping("/vehicle-types")
     @Operation(
             summary = "차종 코드 목록 조회",
@@ -47,22 +50,24 @@ public class VehiclesController {
         return ResponseEntity.ok(vehicleQueryService.getVehicleTypes());
     }
 
+    // -------------------------------
+    // 2) 차량 단건 등록
+    // -------------------------------
     @PostMapping("/vehicles")
     @Operation(
             summary = "차량 단건 등록",
             description = """
                 신규 차량을 1대 등록합니다.<br><br>
-               
+
                  **중복 검증 규칙**<br>
                 - 동일한 stationId(소방서) 내에서 callSign(호출명)이 중복되면 <b>409(CONFLICT)</b> 발생<br><br>
-                
+
                  **상태(status) 기본값**<br>
                 - status는 요청으로 받지 않으며 서비스 내부에서 기본값 0(대기)로 저장됩니다.<br><br>
-                
+
                  **집결지(rallyPoint)**<br>
-                - 단건 등록에서는 rallyPoint(집결지 여부)를 입력받지 않습니다.<br>
                 - 지역(sido)이 '경북'이면 기본 0, 그 외 지역이면 1로 서비스에서 자동 설정됩니다.<br><br>
-                
+
                  **입력 항목 설명**<br>
                 - stationId: 차량이 소속된 소방서의 ID(stations.id)<br>
                 - sido: 시/도 단위 지역명 (예: 경상북도, 서울특별시)<br>
@@ -90,6 +95,47 @@ public class VehiclesController {
         return ResponseEntity.status(201).body(vehiclesService.create(req));
     }
 
+    // -------------------------------
+    // 3) 차량 다건 등록 (배치)  ← ★ 여기만 새로 추가된 엔드포인트
+    // -------------------------------
+    @PostMapping("/vehicles/batch")
+    @Operation(
+            summary = "차량 다건 등록 (엑셀→JSON 변환)",
+            description = """
+                    엑셀을 JSON으로 변환한 데이터를 기반으로 차량을 일괄 등록합니다.<br><br>
+
+                    **자동 처리 규칙**<br>
+                    - 동일 stationId + callSign 중복은 자동 스킵<br>
+                    - rallyPoint는 sido가 '경북'이면 0, 그 외는 1로 자동 설정<br>
+                    - 기본 상태(status)는 0(대기)<br><br>
+
+                    **입력 예시(JSON)**<br>
+                    ```json
+                    [
+                      { "stationId": 1, "sido": "경북", "typeName": "로젠바우어", "callSign": "의성-01", ... },
+                      { "stationId": 2, "sido": "서울", "typeName": "경펌", "callSign": "강남-02", ... }
+                    ]
+                    ```
+                    """
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "다건 등록 결과",
+                    content = @Content(mediaType = "application/json",
+                            schema = @Schema(implementation = VehicleBatchResponse.class))),
+            @ApiResponse(responseCode = "400", description = "요청 형식 오류"),
+            @ApiResponse(responseCode = "500", description = "서버 내부 오류")
+    })
+    public ResponseEntity<VehicleBatchResponse> registerBatch(
+            @RequestBody
+            @Parameter(description = "엑셀→JSON 변환된 차량 목록", required = true)
+            List<VehicleBatchRequest> requests
+    ) {
+        return ResponseEntity.ok(vehiclesService.registerBatch(requests));
+    }
+
+    // -------------------------------
+    // 4) 차량 목록 조회
+    // -------------------------------
     @GetMapping("/vehicles")
     @Operation(
             summary = "차량 목록 조회",
@@ -129,6 +175,9 @@ public class VehiclesController {
         return ResponseEntity.ok(vehiclesService.list(stationId, status, typeName, callSignLike));
     }
 
+    // -------------------------------
+    // 5) 차량 정보 수정
+    // -------------------------------
     @PatchMapping("/vehicles/{id}")
     @Operation(
             summary = "차량 정보 수정",
@@ -161,6 +210,9 @@ public class VehiclesController {
         return ResponseEntity.ok(vehiclesService.update(id, req));
     }
 
+    // -------------------------------
+    // 6) 차량 상태 변경
+    // -------------------------------
     @PatchMapping("/vehicles/{id}/status")
     @Operation(
             summary = "차량 상태 변경",
@@ -191,6 +243,9 @@ public class VehiclesController {
         return ResponseEntity.ok(vehiclesService.updateStatus(id, req.getStatus()));
     }
 
+    // -------------------------------
+    // 7) 집결지 플래그 설정/토글
+    // -------------------------------
     @PatchMapping("/vehicles/{id}/assembly")
     @Operation(
             summary = "집결지 플래그 토글/설정",
