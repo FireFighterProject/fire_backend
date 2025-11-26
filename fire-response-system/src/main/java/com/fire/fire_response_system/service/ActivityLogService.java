@@ -18,6 +18,12 @@ public class ActivityLogService {
 
     private final ActivityLogRepository logRepo;
 
+    /** 공통 조회 */
+    private ActivityLog getLog(Long id) {
+        return logRepo.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("ActivityLog not found: " + id));
+    }
+
     @Transactional
     public Long start(ActivityStartRequest req) {
         ActivityLog log = ActivityLog.builder()
@@ -25,7 +31,7 @@ public class ActivityLogService {
                 .stationId(req.getStationId())
                 .place(req.getPlace())
                 .description(req.getDescription())
-                .status(1) // 활동
+                .status(1)
                 .startedAt(LocalDateTime.now())
                 .build();
         return logRepo.save(log).getId();
@@ -33,8 +39,7 @@ public class ActivityLogService {
 
     @Transactional
     public MessageResponse returnVehicle(Long id) {
-        ActivityLog log = logRepo.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("activity log not found: " + id));
+        ActivityLog log = getLog(id);
         log.setStatus(2);
         log.setReturnedAt(LocalDateTime.now());
         return new MessageResponse("복귀 처리 완료");
@@ -42,8 +47,7 @@ public class ActivityLogService {
 
     @Transactional
     public MessageResponse move(Long id, ActivityMoveRequest req) {
-        ActivityLog log = logRepo.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("activity log not found: " + id));
+        ActivityLog log = getLog(id);
         log.setPlace(req.getNewPlace());
         log.setDescription(req.getNewDescription());
         log.setMovedAt(LocalDateTime.now());
@@ -52,13 +56,13 @@ public class ActivityLogService {
 
     @Transactional(readOnly = true)
     public List<ActivityLogResponse> list() {
-        return logRepo.findAll().stream().map(ActivityLogResponse::from).collect(Collectors.toList());
+        return logRepo.findAll().stream()
+                .map(ActivityLogResponse::from)
+                .toList();
     }
 
     @Transactional(readOnly = true)
     public ActivityLogResponse detail(Long id) {
-        ActivityLog log = logRepo.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("activity log not found: " + id));
-        return ActivityLogResponse.from(log);
+        return ActivityLogResponse.from(getLog(id));
     }
 }
