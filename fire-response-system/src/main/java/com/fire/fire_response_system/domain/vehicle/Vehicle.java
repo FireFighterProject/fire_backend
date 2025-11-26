@@ -13,10 +13,15 @@ import java.time.LocalDateTime;
         uniqueConstraints = {
                 @UniqueConstraint(name = "uk_station_call_sign", columnNames = {"station_id","call_sign"})
         })
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Vehicle {
 
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(name = "station_id", nullable = false)
@@ -45,6 +50,12 @@ public class Vehicle {
     @Column(name = "rally_point")
     private Integer rallyPoint;
 
+    /**
+     * 출동 횟수 (통계용)
+     */
+    @Column(name = "dispatch_count", nullable = false)
+    private Integer dispatchCount;
+
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
@@ -55,7 +66,11 @@ public class Vehicle {
     public void onCreate() {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
+        if (this.dispatchCount == null) {
+            this.dispatchCount = 0;
+        }
     }
+
     @PreUpdate
     public void onUpdate() {
         this.updatedAt = LocalDateTime.now();

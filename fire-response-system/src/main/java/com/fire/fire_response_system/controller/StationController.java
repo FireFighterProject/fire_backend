@@ -29,7 +29,7 @@ public class StationController {
             description = "전체 소방서 목록을 반환합니다. sido 파라미터를 지정하면 해당 지역의 소방서만 반환합니다."
     )
     public ResponseEntity<List<StationResponse>> list(
-            @Parameter(description = "시도명 (예: 경상북도, 서울특별시 등)", example = "경북")
+            @Parameter(description = "시도명 (예: 경상북도, 서울특별시 등)", example = "경상북도")
             @RequestParam(required = false) String sido
     ) {
         return ResponseEntity.ok(stationService.list(sido));
