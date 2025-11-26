@@ -17,12 +17,8 @@ public class WeatherService {
     @Value("${weather.base-url}")
     private String baseUrl;
 
-    // 간단히 new 로 사용 (필요하면 @Bean 으로 분리해도 됨)
     private final RestTemplate restTemplate = new RestTemplate();
 
-    /**
-     * 기상청 단기예보(4.3 VilageFcst) 조회
-     */
     public String getVillageForecast(
             String baseDate,
             String baseTime,
@@ -31,10 +27,14 @@ public class WeatherService {
             int pageNo,
             int numOfRows
     ) {
+
+        if (baseDate == null || baseTime == null)
+            throw new IllegalArgumentException("baseDate, baseTime은 필수입니다.");
+
         String url = UriComponentsBuilder.fromHttpUrl(baseUrl)
                 .queryParam("pageNo", pageNo)
                 .queryParam("numOfRows", numOfRows)
-                .queryParam("dataType", "JSON")          // 프론트에서 쓰기 편하게 JSON으로 고정
+                .queryParam("dataType", "JSON")
                 .queryParam("base_date", baseDate)
                 .queryParam("base_time", baseTime)
                 .queryParam("nx", nx)
@@ -42,7 +42,6 @@ public class WeatherService {
                 .queryParam("authKey", apiKey)
                 .toUriString();
 
-        // 그대로 String으로 리턴해서 컨트롤러 -> 프론트로 전달
         return restTemplate.getForObject(url, String.class);
     }
 }
