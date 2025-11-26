@@ -33,7 +33,8 @@ public class VehicleBatchService {
             }
 
             // rallyPoint 규칙 적용
-            int rally = "경북".equals(req.getProvince()) ? 0 : 1;
+            int rally = "경북".equals(req.getSido()) ? 0 : 1;
+
 
             Vehicle v = Vehicle.builder()
                     .stationId(req.getStationId())
