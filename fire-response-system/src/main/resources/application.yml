@@ -27,3 +27,8 @@ springdoc:
 jwt:
   secret: change-this-secret-please-change-to-32+bytes-123456
   access-token-validity-seconds: 3600
+
+# 🔹 기상청 단기예보 API 설정
+weather:
+  api-key: 4Q5DhMUXTayOQ4TFFy2sLw
+  base-url: https://apihub.kma.go.kr/api/typ02/openApi/VilageFcstInfoService_2.0/getVilageFcst
