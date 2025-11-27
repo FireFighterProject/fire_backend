@@ -4,7 +4,8 @@ import lombok.Getter;
 
 @Getter
 public class VehicleBatchRequest {
-    private Long stationId;
+//  private Long stationId;     // id대신 name으로 대체
+    private String stationName;
     private String sido;        // ← 수정됨
     private String typeName;
     private String callSign;

@@ -57,34 +57,40 @@ public class VehiclesController {
     @Operation(
             summary = "차량 단건 등록",
             description = """
-                신규 차량을 1대 등록합니다.<br><br>
+            신규 차량 1대를 등록합니다.<br><br>
 
-                 **중복 검증 규칙**<br>
-                - 동일한 stationId(소방서) 내에서 callSign(호출명)이 중복되면 <b>409(CONFLICT)</b> 발생<br><br>
+             **소방서 매핑 규칙(stationName 기반)**<br>
+            - 요청에서는 stationName(소방서명)만 전달합니다.<br>
+            - 백엔드에서 stationName + sido 로 stations 테이블에서 stationId 를 자동 조회합니다.<br>
+            - stationName 이 존재하지 않으면 400 에러를 발생합니다.<br><br>
 
-                 **상태(status) 기본값**<br>
-                - status는 요청으로 받지 않으며 서비스 내부에서 기본값 0(대기)로 저장됩니다.<br><br>
+             **중복 검증 규칙**<br>
+            - 동일 stationName(→stationId) 내에서 callSign(호출명)이 중복되면 <b>409(CONFLICT)</b> 발생<br><br>
 
-                 **집결지(rallyPoint)**<br>
-                - 지역(sido)이 '경북'이면 기본 0, 그 외 지역이면 1로 서비스에서 자동 설정됩니다.<br><br>
+             **상태(status) 기본값**<br>
+            - 요청에 status 가 없으면 기본값 0(대기)로 저장됩니다.<br><br>
 
-                 **입력 항목 설명**<br>
-                - stationId: 차량이 소속된 소방서의 ID(stations.id)<br>
-                - sido: 시/도 단위 지역명 (예: 경상북도, 서울특별시)<br>
-                - callSign: 현장에서 사용하는 호출명 (예: '강남소방서-01')<br>
-                - typeName: 차종명 (경펌/소펌/중펌/대펌/중형탱크/대형탱크/구조/구급 등)<br>
-                - capacity: 용량(L 또는 kg). 펌프 차량의 물 용량, 탱크 차량의 탱크 용량 등<br>
-                - personnel: 기본 탑승 인원 수<br>
-                - avlNumber: AVL(차량 위치 송신 단말) 전화번호 또는 기기번호<br>
-                - psLteNumber: PS-LTE 번호 (재난안전통신망 번호)<br>
-                """
+             **집결지(rallyPoint) 자동 규칙**<br>
+            - sido 가 '경북'이면 기본값 0<br>
+            - 그 외 지역이면 기본값 1 로 자동 설정<br><br>
+
+             **입력 항목 설명**<br>
+            - stationName: 소방서명 (예: '경산소방서')<br>
+            - sido: 시/도 단위 지역명 (예: '경북', '서울')<br>
+            - callSign: 호출명 (예: '경산-01')<br>
+            - typeName: 차종명 (예: 경펌, 소펌, 탱크, 구조, 구급 등)<br>
+            - capacity: 차량 용량(L 또는 kg)<br>
+            - personnel: 탑승 인원 수<br>
+            - avlNumber: AVL 기기 번호<br>
+            - psLteNumber: PS-LTE 번호<br>
+            """
     )
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "차량 등록 성공",
                     content = @Content(mediaType = "application/json",
                             schema = @Schema(implementation = VehicleResponse.class))),
-            @ApiResponse(responseCode = "400", description = "필수 값 누락 또는 잘못된 요청 형식"),
-            @ApiResponse(responseCode = "409", description = "동일 stationId + callSign 차량 이미 존재"),
+            @ApiResponse(responseCode = "400", description = "stationName 또는 필수 입력값 누락"),
+            @ApiResponse(responseCode = "409", description = "동일 소방서 내 callSign 중복"),
             @ApiResponse(responseCode = "500", description = "서버 내부 오류")
     })
     public ResponseEntity<VehicleResponse> create(
@@ -95,28 +101,56 @@ public class VehiclesController {
         return ResponseEntity.status(201).body(vehiclesService.create(req));
     }
 
+
     // -------------------------------
-    // 3) 차량 다건 등록 (배치)  ← ★ 여기만 새로 추가된 엔드포인트
+    // 3) 차량 다건 등록 (배치)
     // -------------------------------
     @PostMapping("/vehicles/batch")
     @Operation(
             summary = "차량 다건 등록 (엑셀→JSON 변환)",
             description = """
-                    엑셀을 JSON으로 변환한 데이터를 기반으로 차량을 일괄 등록합니다.<br><br>
+            엑셀을 JSON으로 변환한 데이터를 기반으로 여러 차량을 한꺼번에 등록합니다.<br><br>
 
-                    **자동 처리 규칙**<br>
-                    - 동일 stationId + callSign 중복은 자동 스킵<br>
-                    - rallyPoint는 sido가 '경북'이면 0, 그 외는 1로 자동 설정<br>
-                    - 기본 상태(status)는 0(대기)<br><br>
+            **소방서 매핑 규칙(stationName 기반)**<br>
+            - 각 row 에서 stationName + sido 로 stationId 를 자동 조회합니다.<br>
+            - stationName 이 존재하지 않으면 해당 row 는 <b>자동 스킵</b>되고 오류 메시지가 추가됩니다.<br><br>
 
-                    **입력 예시(JSON)**<br>
-                    ```json
-                    [
-                      { "stationId": 1, "sido": "경북", "typeName": "로젠바우어", "callSign": "의성-01", ... },
-                      { "stationId": 2, "sido": "서울", "typeName": "경펌", "callSign": "강남-02", ... }
-                    ]
-                    ```
-                    """
+            **중복 처리 규칙**<br>
+            - 동일 stationName 내 callSign 이 이미 존재하면 <b>등록하지 않고 스킵</b><br>
+            - 스킵된 row 는 응답의 messages 배열에 기록됩니다.<br><br>
+
+            **자동 처리 규칙**<br>
+            - rallyPoint: sido = '경북' → 0, 그 외 지역 → 1<br>
+            - status: 요청에 없으면 기본 0(대기)<br><br>
+
+            **입력 예시(JSON)**<br>
+            ```json
+            [
+              {
+                "stationName": "경산소방서",
+                "sido": "경북",
+                "callSign": "경산-01",
+                "typeName": "구조",
+                "capacity": 3000,
+                "personnel": 4
+              },
+              {
+                "stationName": "강남소방서",
+                "sido": "서울",
+                "callSign": "강남-02",
+                "typeName": "경펌",
+                "capacity": 1500,
+                "personnel": 3
+              }
+            ]
+            ```<br><br>
+
+            **응답 내용**<br>
+            - total: 전체 요청 개수<br>
+            - inserted: 실제 등록된 차량 수<br>
+            - duplicates: callSign 중복으로 스킵된 개수<br>
+            - errors: stationName 매핑 실패 또는 기타 스킵 사유 메시지 목록<br>
+            """
     )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "다건 등록 결과",
@@ -132,6 +166,7 @@ public class VehiclesController {
     ) {
         return ResponseEntity.ok(vehiclesService.registerBatch(requests));
     }
+
 
     // -------------------------------
     // 4) 차량 목록 조회

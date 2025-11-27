@@ -1,6 +1,7 @@
 package com.fire.fire_response_system.service;
 
 import com.fire.fire_response_system.domain.vehicle.Vehicle;
+import com.fire.fire_response_system.domain.station.Station;
 import com.fire.fire_response_system.dto.vehicle.*;
 import com.fire.fire_response_system.repository.StationRepository;
 import com.fire.fire_response_system.repository.VehicleRepository;
@@ -27,25 +28,32 @@ public class VehiclesService {
     // ---------------------------
     @Transactional
     public VehicleResponse create(VehicleCreateRequest req) {
-        var station = stationRepository.findById(req.getStationId())
-                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 stationId"));
-        if (vehicleRepository.existsByStationIdAndCallSign(req.getStationId(), req.getCallSign())) {
+
+        // ★ stationName 기반으로 station 조회
+        Station station = stationRepository
+                .findBySidoAndName(req.getSido(), req.getStationName())
+                .orElseThrow(() ->
+                        new IllegalArgumentException("존재하지 않는 소방서: " + req.getSido() + " " + req.getStationName()));
+
+        Long stationId = station.getId();
+
+        // 기존 중복 체크 그대로 유지
+        if (vehicleRepository.existsByStationIdAndCallSign(stationId, req.getCallSign())) {
             throw new IllegalStateException("동일 소방서에 이미 존재하는 callSign");
         }
 
-        // rallyPoint 규칙: 경북=0, 그 외=1
         int rally = "경북".equals(req.getSido()) ? 0 : 1;
 
         Vehicle v = Vehicle.builder()
-                .stationId(req.getStationId())
-                .sido(req.getSido()) // 프론트에서 받은 시도 그대로 저장
+                .stationId(stationId)
+                .sido(req.getSido())
                 .callSign(req.getCallSign())
                 .typeName(req.getTypeName())
                 .capacity(req.getCapacity())
                 .personnel(req.getPersonnel())
                 .avlNumber(req.getAvlNumber())
                 .psLteNumber(req.getPsLteNumber())
-                .status(0) // 기본 0(대기)
+                .status(0)
                 .rallyPoint(rally)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
@@ -56,18 +64,31 @@ public class VehiclesService {
     }
 
     // ---------------------------
-    // 2) 차량 다건 등록 (batch만 통합)
+    // 2) 차량 다건 등록 (배치)
     // ---------------------------
     @Transactional
     public VehicleBatchResponse registerBatch(List<VehicleBatchRequest> requests) {
+
         VehicleBatchResponse res = VehicleBatchResponse.empty();
         int inserted = 0, duplicates = 0;
 
         for (int i = 0; i < requests.size(); i++) {
             VehicleBatchRequest req = requests.get(i);
 
-            // 중복 체크
-            if (vehicleRepository.existsByStationIdAndCallSign(req.getStationId(), req.getCallSign())) {
+            // ★ stationName 기반 station 조회
+            Station station = stationRepository
+                    .findBySidoAndName(req.getSido(), req.getStationName())
+                    .orElse(null);
+
+            if (station == null) {
+                res.getMessages().add("소방서 없음 → 스킵: row=" + (i + 1));
+                continue;
+            }
+
+            Long stationId = station.getId();
+
+            // 기존 중복 체크 그대로 유지
+            if (vehicleRepository.existsByStationIdAndCallSign(stationId, req.getCallSign())) {
                 duplicates++;
                 res.getMessages().add("중복 스킵: row=" + (i + 1) + ", callSign=" + req.getCallSign());
                 continue;
@@ -76,7 +97,7 @@ public class VehiclesService {
             int rally = "경북".equals(req.getSido()) ? 0 : 1;
 
             Vehicle v = Vehicle.builder()
-                    .stationId(req.getStationId())
+                    .stationId(stationId)
                     .sido(req.getSido())
                     .typeName(req.getTypeName())
                     .callSign(req.getCallSign())
@@ -84,7 +105,7 @@ public class VehiclesService {
                     .personnel(req.getPersonnel())
                     .avlNumber(req.getAvlNumber())
                     .psLteNumber(req.getPsLteNumber())
-                    .status(0) // 기본: 대기
+                    .status(0)
                     .rallyPoint(rally)
                     .createdAt(LocalDateTime.now())
                     .updatedAt(LocalDateTime.now())
@@ -101,18 +122,20 @@ public class VehiclesService {
     }
 
     // ---------------------------
-    // 3) 차량 목록 조회
+    // 3) 차량 목록 조회 (변경 없음)
     // ---------------------------
     public List<VehicleListItem> list(Long stationId, Integer status, String typeName, String callSignLike) {
+
         var cb = em.getCriteriaBuilder();
         var cq = cb.createQuery(Vehicle.class);
         var root = cq.from(Vehicle.class);
 
         List<Predicate> p = new ArrayList<>();
         if (stationId != null) p.add(cb.equal(root.get("stationId"), stationId));
-        if (status != null)    p.add(cb.equal(root.get("status"), status));
+        if (status != null) p.add(cb.equal(root.get("status"), status));
         if (typeName != null && !typeName.isBlank()) p.add(cb.equal(root.get("typeName"), typeName));
-        if (callSignLike != null && !callSignLike.isBlank()) p.add(cb.like(root.get("callSign"), "%" + callSignLike + "%"));
+        if (callSignLike != null && !callSignLike.isBlank())
+            p.add(cb.like(root.get("callSign"), "%" + callSignLike + "%"));
 
         cq.where(p.toArray(Predicate[]::new))
                 .orderBy(cb.asc(root.get("stationId")), cb.asc(root.get("callSign")));
@@ -135,50 +158,69 @@ public class VehiclesService {
     }
 
     // ---------------------------
-    // 4) 차량 정보 수정
+    // 4) 차량 정보 수정 (변경 없음)
     // ---------------------------
     @Transactional
     public VehicleResponse update(Long id, VehicleUpdateRequest req) {
-        var v = vehicleRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("vehicle 없음"));
+        var v = vehicleRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("vehicle 없음"));
+
         if (req.getCallSign() != null && !req.getCallSign().isBlank()) {
             String newCall = req.getCallSign();
+
             if (!newCall.equals(v.getCallSign())) {
-                boolean dup = vehicleRepository.existsByStationIdAndCallSignAndIdNot(v.getStationId(), newCall, v.getId());
-                if (dup) throw new IllegalStateException("동일 소방서에 이미 존재하는 callSign");
+                boolean dup = vehicleRepository
+                        .existsByStationIdAndCallSignAndIdNot(v.getStationId(), newCall, v.getId());
+
+                if (dup)
+                    throw new IllegalStateException("동일 소방서에 이미 callSign 존재");
+
                 v.setCallSign(newCall);
             }
         }
-        if (req.getTypeName() != null)  v.setTypeName(req.getTypeName());
-        if (req.getCapacity() != null)  v.setCapacity(req.getCapacity());
+
+        if (req.getTypeName() != null) v.setTypeName(req.getTypeName());
+        if (req.getCapacity() != null) v.setCapacity(req.getCapacity());
         if (req.getPersonnel() != null) v.setPersonnel(req.getPersonnel());
         if (req.getAvlNumber() != null) v.setAvlNumber(req.getAvlNumber());
         if (req.getPsLteNumber() != null) v.setPsLteNumber(req.getPsLteNumber());
+
         return toResponse(v);
     }
 
     // ---------------------------
-    // 5) 상태 변경
+    // 5) 차량 상태 변경 (변경 없음)
     // ---------------------------
     @Transactional
     public VehicleResponse updateStatus(Long id, Integer status) {
-        if (status == null || status < 0 || status > 2) throw new IllegalArgumentException("status는 0/1/2만 허용");
-        var v = vehicleRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("vehicle 없음"));
+        if (status == null || status < 0 || status > 2)
+            throw new IllegalArgumentException("status는 0/1/2만 허용");
+
+        var v = vehicleRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("vehicle 없음"));
+
         v.setStatus(status);
         return toResponse(v);
     }
 
     // ---------------------------
-    // 6) 집결지 변경
+    // 6) 집결지 변경 (변경 없음)
     // ---------------------------
     @Transactional
     public VehicleResponse updateAssembly(Long id, Integer rallyPoint) {
-        var v = vehicleRepository.findById(id).orElseThrow(() -> new IllegalArgumentException("vehicle 없음"));
+        var v = vehicleRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("vehicle 없음"));
+
         if (rallyPoint == null) {
-            v.setRallyPoint(v.getRallyPoint() != null && v.getRallyPoint() == 1 ? 0 : 1);
+            v.setRallyPoint(
+                    v.getRallyPoint() != null && v.getRallyPoint() == 1 ? 0 : 1
+            );
         } else {
-            if (rallyPoint != 0 && rallyPoint != 1) throw new IllegalArgumentException("rallyPoint는 0/1만 허용");
+            if (rallyPoint != 0 && rallyPoint != 1)
+                throw new IllegalArgumentException("rallyPoint는 0/1만 허용");
             v.setRallyPoint(rallyPoint);
         }
+
         return toResponse(v);
     }
 
@@ -186,8 +228,10 @@ public class VehiclesService {
         return new VehicleResponse(
                 v.getId(), v.getStationId(), v.getSido(),
                 v.getTypeName(), v.getCallSign(),
-                v.getCapacity(), v.getPersonnel(), v.getAvlNumber(), v.getPsLteNumber(),
-                v.getStatus(), v.getRallyPoint(), v.getCreatedAt(), v.getUpdatedAt()
+                v.getCapacity(), v.getPersonnel(),
+                v.getAvlNumber(), v.getPsLteNumber(),
+                v.getStatus(), v.getRallyPoint(),
+                v.getCreatedAt(), v.getUpdatedAt()
         );
     }
 }

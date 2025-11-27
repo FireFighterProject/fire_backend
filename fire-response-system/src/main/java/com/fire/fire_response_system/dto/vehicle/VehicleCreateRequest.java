@@ -1,33 +1,33 @@
-    package com.fire.fire_response_system.dto.vehicle;
+package com.fire.fire_response_system.dto.vehicle;
 
-    import jakarta.validation.constraints.*;
+import jakarta.validation.constraints.NotBlank;
+import lombok.Getter;
 
-    import lombok.Getter;
+@Getter
+public class VehicleCreateRequest {
 
-    @Getter
-    public class VehicleCreateRequest {
-        @NotNull(message = "stationId 필수")
-        private Long stationId;
+    /** 🔥 소방서 이름 (DB 컬럼: stations.name) */
+    @NotBlank(message = "stationName 필수")
+    private String stationName;
 
-        @NotBlank
-        private String sido;
+    /** 🔥 시도 (DB 컬럼: stations.sido) */
+    @NotBlank(message = "sido 필수")
+    private String sido;
 
-        @NotBlank(message = "callSign 필수")
-        private String callSign;
+    /** 🔥 호출명 */
+    @NotBlank(message = "callSign 필수")
+    private String callSign;
 
-        private String typeName;
-        private Integer capacity;
-        private Integer personnel;
-        private String avlNumber;
-        private String psLteNumber;
+    /** 선택값들 */
+    private String typeName;
+    private Integer capacity;
+    private Integer personnel;
+    private String avlNumber;
+    private String psLteNumber;
 
-        /**
-         * 0=대기, 1=활동, 2=철수 (기본 0)
-         */
-        private Integer status;
+    /** 0=대기, 1=활동, 2=철수 (기본 0) */
+    private Integer status;
 
-        /**
-         * 0/1 (기본 0)
-         */
-        private Integer rallyPoint;
-    }
+    /** 0/1 (기본 0, 또는 규칙 자동 적용) */
+    private Integer rallyPoint;
+}
