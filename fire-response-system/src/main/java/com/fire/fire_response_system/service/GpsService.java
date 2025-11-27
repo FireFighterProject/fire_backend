@@ -1,27 +1,28 @@
-// src/main/java/com/fire/fire_response_system/service/GpsService.java
 package com.fire.fire_response_system.service;
 
 import com.fire.fire_response_system.dto.gps.GpsSendRequest;
 import com.fire.fire_response_system.dto.gps.GpsSendBatchRequest;
 import com.fire.fire_response_system.dto.gps.MapStatsRequest;
+import com.fire.fire_response_system.repository.VehicleLocationRepository;
+import com.fire.fire_response_system.repository.VehicleRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
 public class GpsService {
 
+    private final VehicleRepository vehicleRepository;
+    private final VehicleLocationRepository locationRepository;
+
     public void receive(GpsSendRequest req) {
-        // TODO: vehicle_gps_log + vehicle_current_location 저장
+        // TODO: vehicle_gps_log + vehicle_location 저장
     }
 
     public int receiveAll(GpsSendBatchRequest req) {
-        // TODO: req.getItems().forEach(this::receive)
         return 0;
     }
 
@@ -30,22 +31,59 @@ public class GpsService {
                        LocalDateTime to,
                        int page,
                        int size) {
-        // TODO: repository 조회 후 Paging
         return Collections.emptyList();
     }
 
     public Object status(Long stationId, Integer withinMinutes) {
-        // TODO: 차량 마지막 위치 기반 수신 시간 체크
         return Collections.emptyList();
     }
 
+    /**
+     * 🔥 stationId만 입력하면
+     * → 그 소방서에 속한 모든 차량들의 최신 GPS 정보 조회
+     */
+    public Object lastLocationsAll(Long stationId) {
+
+        // 1) stationId → vehicleId list 조회
+        List<Long> vehicleIds = vehicleRepository.findIdsByStationId(stationId);
+        if (vehicleIds.isEmpty())
+            return List.of();
+
+        // 2) 각 차량 최신 GPS 조회
+        List<Map<String, Object>> result = new ArrayList<>();
+
+        for (Long vid : vehicleIds) {
+
+            var opt = locationRepository.findTop1ByVehicleIdOrderByLastUpdatedAtDesc(vid);
+
+            if (opt.isPresent()) {
+                var loc = opt.get();
+
+                result.add(Map.of(
+                        "vehicleId", vid,
+                        "latitude", loc.getLatitude(),
+                        "longitude", loc.getLongitude(),
+                        "heading", loc.getHeading(),
+                        "speedKph", loc.getSpeedKph(),
+                        "lastUpdatedAt", loc.getLastUpdatedAt()
+                ));
+
+            } else {
+                result.add(Map.of(
+                        "vehicleId", vid,
+                        "gps", "NO_DATA"
+                ));
+            }
+        }
+
+        return result;
+    }
+
     public Object lastLocations(Long stationId, List<Long> vehicleIds) {
-        // TODO: stationId + vehicleIds 조건 조회
         return Collections.emptyList();
     }
 
     public Object mapStats(MapStatsRequest req) {
-        // TODO: bbox 기반 차량 필터링, 상태통계 계산
         return Map.of(
                 "totalVehicles", 0,
                 "activeVehicles", 0,

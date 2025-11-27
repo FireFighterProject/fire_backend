@@ -40,6 +40,17 @@ public class GpsController {
         return ResponseEntity.ok(count);
     }
 
+
+    /** 소방서의 모든 차량 최신 GPS 조회 (빠른 버전) */
+    @GetMapping("/last-locations/all")
+    @Operation(summary = "소방서 차량 전체 GPS 조회(임시 빠른 버전)")
+    public ResponseEntity<?> lastLocationsAll(
+            @RequestParam Long stationId
+    ) {
+        return ResponseEntity.ok(gpsService.lastLocationsAll(stationId));
+    }
+
+
     /** 차량 GPS 로그 조회 */
     @GetMapping("/logs")
     @Operation(summary = "차량 GPS 로그 조회")

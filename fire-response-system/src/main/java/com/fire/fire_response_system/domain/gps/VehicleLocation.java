@@ -5,10 +5,15 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "vehicle_location")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Table(name = "vehicle_location")  // ★ DB 테이블명 그대로 매칭
+@Getter @Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class VehicleLocation {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(name = "vehicle_id", nullable = false)
@@ -21,7 +26,6 @@ public class VehicleLocation {
     @Column(name = "speed_kph")
     private Double speedKph;
 
-    // 최신 갱신시각 (서비스에서 직접 세팅)
     @Column(name = "last_updated_at")
     private LocalDateTime lastUpdatedAt;
 }
