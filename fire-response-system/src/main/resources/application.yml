@@ -1,20 +1,20 @@
 server:
   port: 8081
 
-#spring:
-#  datasource:
-#    url: jdbc:mysql://localhost:3330/fire_response_system?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
-#    username: root
-#    password: 1234
-#    driver-class-name: com.mysql.cj.jdbc.Driver
-
-
 spring:
   datasource:
-    url: jdbc:mysql://mysql-1bd69c46-capstone2.g.aivencloud.com:25590/fire_response_system?ssl-mode=REQUIRED
-    username: avnadmin
-    password: AVNS_Ozi4pud2pUgpPbOzJ9V
+    url: jdbc:mysql://localhost:3330/fire_response_system?serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    username: root
+    password: 1234
     driver-class-name: com.mysql.cj.jdbc.Driver
+
+
+#spring:
+#  datasource:
+#    url: jdbc:mysql://mysql-1bd69c46-capstone2.g.aivencloud.com:25590/fire_response_system?ssl-mode=REQUIRED
+#    username: avnadmin
+#    password: AVNS_Ozi4pud2pUgpPbOzJ9V
+#    driver-class-name: com.mysql.cj.jdbc.Driver
 
 
   jpa:
