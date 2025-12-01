@@ -7,27 +7,51 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "dispatch_orders")
-@Getter @Setter
-@Builder @NoArgsConstructor @AllArgsConstructor
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class DispatchOrder {
 
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "station_id", nullable = false)
-    private Long stationId;
-
+    /** 출동 제목 */
+    @Column(nullable = false, length = 255)
     private String title;
 
-    private String description;
+    /** 출동 주소 */
+    @Column(nullable = false, length = 255)
+    private String address;
 
-    @Convert(converter = DispatchStatusConverter.class)
-    @Column(name = "order_status", nullable = false)
+    /** 출동 내용/메모 */
+    @Column(nullable = false, columnDefinition = "TEXT")
+    private String content;
+
+    /** 출동 상태 */
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
     private DispatchStatus status;
 
-    @Column(name = "created_at")
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    @PrePersist
+    public void onCreate() {
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = this.createdAt;
+        if (this.status == null) {
+            this.status = DispatchStatus.DRAFT;
+        }
+    }
+
+    @PreUpdate
+    public void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
+    }
 }

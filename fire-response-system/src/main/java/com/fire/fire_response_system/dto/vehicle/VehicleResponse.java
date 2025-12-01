@@ -13,7 +13,7 @@ public record VehicleResponse(
         String avlNumber,
         String psLteNumber,
         Integer status,
-        Integer rallyPoint,
+        String rallyPoint,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {}

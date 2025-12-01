@@ -7,7 +7,7 @@ public record VehicleListItem(
         String typeName,
         String callSign,
         Integer status,
-        Integer rallyPoint,
+        String rallyPoint,
         // 추가 필드 4개
         Integer capacity,
         Integer personnel,

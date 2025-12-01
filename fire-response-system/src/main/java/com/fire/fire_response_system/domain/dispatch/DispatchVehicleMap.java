@@ -1,47 +1,50 @@
 package com.fire.fire_response_system.domain.dispatch;
 
+import com.fire.fire_response_system.domain.vehicle.Vehicle;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "dispatch_vehicle_map",
-        indexes = {
-                @Index(name = "idx_dvm_order", columnList = "dispatch_order_id"),
-                @Index(name = "idx_dvm_order_vehicle", columnList = "dispatch_order_id,vehicle_id", unique = true)
-        })
-@Getter @Setter
-@Builder @NoArgsConstructor @AllArgsConstructor
+@Table(
+        name = "dispatch_vehicle_map",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_assignment_vehicle",
+                        columnNames = {"assignment_id", "vehicle_id"}
+                )
+        }
+)
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class DispatchVehicleMap {
 
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "dispatch_order_id", nullable = false)
-    private Long dispatchOrderId;
+    /** 어떤 배치의 차량인가 */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "assignment_id", nullable = false)
+    private DispatchAssignment assignment;
 
-    @Column(name = "vehicle_id", nullable = false)
-    private Long vehicleId;
+    /** 편성된 차량 */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "vehicle_id", nullable = false)
+    private Vehicle vehicle;
 
-    @Convert(converter = DispatchVehicleStatusConverter.class)
-    @Column(nullable = false)
-    private DispatchVehicleStatus status;
-
-    @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt;
-
-    @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
+    /** 편성 시각 */
+    @Column(name = "assigned_at", nullable = false)
+    private LocalDateTime assignedAt;
 
     @PrePersist
-    void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = createdAt;
-    }
-
-    @PreUpdate
-    void onUpdate() {
-        updatedAt = LocalDateTime.now();
+    public void onCreate() {
+        if (this.assignedAt == null) {
+            this.assignedAt = LocalDateTime.now();
+        }
     }
 }

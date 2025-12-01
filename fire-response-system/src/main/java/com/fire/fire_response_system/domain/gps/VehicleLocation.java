@@ -5,11 +5,8 @@ import lombok.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "vehicle_location")  // ★ DB 테이블명 그대로 매칭
-@Getter @Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
+@Table(name = "vehicle_location")
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class VehicleLocation {
 
     @Id
@@ -21,10 +18,6 @@ public class VehicleLocation {
 
     private Double latitude;
     private Double longitude;
-    private Double heading;
-
-    @Column(name = "speed_kph")
-    private Double speedKph;
 
     @Column(name = "last_updated_at")
     private LocalDateTime lastUpdatedAt;

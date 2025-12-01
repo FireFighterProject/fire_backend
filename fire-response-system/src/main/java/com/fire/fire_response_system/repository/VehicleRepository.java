@@ -19,4 +19,7 @@ public interface VehicleRepository extends JpaRepository<Vehicle, Long> {
     // 🔥 stationId로 차량 ID만 조회
     @Query("select v.id from Vehicle v where v.stationId = :stationId")
     List<Long> findIdsByStationId(@Param("stationId") Long stationId);
+
+    @Query("SELECT COALESCE(SUM(v.personnel), 0) FROM Vehicle v")
+    int sumPersonnel();
 }

@@ -29,20 +29,19 @@ public class VehiclesService {
     @Transactional
     public VehicleResponse create(VehicleCreateRequest req) {
 
-        // ★ stationName 기반으로 station 조회
         Station station = stationRepository
                 .findBySidoAndName(req.getSido(), req.getStationName())
                 .orElseThrow(() ->
-                        new IllegalArgumentException("존재하지 않는 소방서: " + req.getSido() + " " + req.getStationName()));
+                        new IllegalArgumentException("존재하지 않는 소방서: "
+                                + req.getSido() + " " + req.getStationName()));
 
         Long stationId = station.getId();
 
-        // 기존 중복 체크 그대로 유지
         if (vehicleRepository.existsByStationIdAndCallSign(stationId, req.getCallSign())) {
             throw new IllegalStateException("동일 소방서에 이미 존재하는 callSign");
         }
 
-        int rally = "경북".equals(req.getSido()) ? 0 : 1;
+        String rally = "경북".equals(req.getSido()) ? "X" : "O";
 
         Vehicle v = Vehicle.builder()
                 .stationId(stationId)
@@ -64,7 +63,7 @@ public class VehiclesService {
     }
 
     // ---------------------------
-    // 2) 차량 다건 등록 (배치)
+    // 2) 차량 다건 등록
     // ---------------------------
     @Transactional
     public VehicleBatchResponse registerBatch(List<VehicleBatchRequest> requests) {
@@ -73,9 +72,9 @@ public class VehiclesService {
         int inserted = 0, duplicates = 0;
 
         for (int i = 0; i < requests.size(); i++) {
+
             VehicleBatchRequest req = requests.get(i);
 
-            // ★ stationName 기반 station 조회
             Station station = stationRepository
                     .findBySidoAndName(req.getSido(), req.getStationName())
                     .orElse(null);
@@ -87,14 +86,13 @@ public class VehiclesService {
 
             Long stationId = station.getId();
 
-            // 기존 중복 체크 그대로 유지
             if (vehicleRepository.existsByStationIdAndCallSign(stationId, req.getCallSign())) {
                 duplicates++;
-                res.getMessages().add("중복 스킵: row=" + (i + 1) + ", callSign=" + req.getCallSign());
+                res.getMessages().add("중복 스킵: row=" + (i + 1));
                 continue;
             }
 
-            int rally = "경북".equals(req.getSido()) ? 0 : 1;
+            String rally = "경북".equals(req.getSido()) ? "X" : "O";
 
             Vehicle v = Vehicle.builder()
                     .stationId(stationId)
@@ -122,25 +120,29 @@ public class VehiclesService {
     }
 
     // ---------------------------
-    // 3) 차량 목록 조회 (변경 없음)
+    // 3) 차량 목록 조회
     // ---------------------------
-    public List<VehicleListItem> list(Long stationId, Integer status, String typeName, String callSignLike) {
+    public List<VehicleListItem> list(Long stationId, Integer status,
+                                      String typeName, String callSignLike) {
 
         var cb = em.getCriteriaBuilder();
         var cq = cb.createQuery(Vehicle.class);
         var root = cq.from(Vehicle.class);
 
         List<Predicate> p = new ArrayList<>();
+
         if (stationId != null) p.add(cb.equal(root.get("stationId"), stationId));
         if (status != null) p.add(cb.equal(root.get("status"), status));
-        if (typeName != null && !typeName.isBlank()) p.add(cb.equal(root.get("typeName"), typeName));
+        if (typeName != null && !typeName.isBlank())
+            p.add(cb.equal(root.get("typeName"), typeName));
         if (callSignLike != null && !callSignLike.isBlank())
             p.add(cb.like(root.get("callSign"), "%" + callSignLike + "%"));
 
         cq.where(p.toArray(Predicate[]::new))
                 .orderBy(cb.asc(root.get("stationId")), cb.asc(root.get("callSign")));
 
-        return em.createQuery(cq).getResultList().stream()
+        return em.createQuery(cq).getResultList()
+                .stream()
                 .map(v -> new VehicleListItem(
                         v.getId(),
                         v.getStationId(),
@@ -148,7 +150,7 @@ public class VehiclesService {
                         v.getTypeName(),
                         v.getCallSign(),
                         v.getStatus(),
-                        v.getRallyPoint(),
+                        v.getRallyPoint(),        // rallyPoint as String
                         v.getCapacity(),
                         v.getPersonnel(),
                         v.getAvlNumber(),
@@ -158,10 +160,11 @@ public class VehiclesService {
     }
 
     // ---------------------------
-    // 4) 차량 정보 수정 (변경 없음)
+    // 4) 차량 정보 수정
     // ---------------------------
     @Transactional
     public VehicleResponse update(Long id, VehicleUpdateRequest req) {
+
         var v = vehicleRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("vehicle 없음"));
 
@@ -170,7 +173,8 @@ public class VehiclesService {
 
             if (!newCall.equals(v.getCallSign())) {
                 boolean dup = vehicleRepository
-                        .existsByStationIdAndCallSignAndIdNot(v.getStationId(), newCall, v.getId());
+                        .existsByStationIdAndCallSignAndIdNot(
+                                v.getStationId(), newCall, v.getId());
 
                 if (dup)
                     throw new IllegalStateException("동일 소방서에 이미 callSign 존재");
@@ -189,10 +193,11 @@ public class VehiclesService {
     }
 
     // ---------------------------
-    // 5) 차량 상태 변경 (변경 없음)
+    // 5) 차량 상태 변경
     // ---------------------------
     @Transactional
     public VehicleResponse updateStatus(Long id, Integer status) {
+
         if (status == null || status < 0 || status > 2)
             throw new IllegalArgumentException("status는 0/1/2만 허용");
 
@@ -204,21 +209,24 @@ public class VehiclesService {
     }
 
     // ---------------------------
-    // 6) 집결지 변경 (변경 없음)
+    // 6) 집결지 변경 (토글)
     // ---------------------------
     @Transactional
     public VehicleResponse updateAssembly(Long id, Integer rallyPoint) {
+
         var v = vehicleRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("vehicle 없음"));
 
         if (rallyPoint == null) {
-            v.setRallyPoint(
-                    v.getRallyPoint() != null && v.getRallyPoint() == 1 ? 0 : 1
-            );
+            // toggle
+            String newRally = "O".equals(v.getRallyPoint()) ? "X" : "O";
+            v.setRallyPoint(newRally);
+
         } else {
             if (rallyPoint != 0 && rallyPoint != 1)
                 throw new IllegalArgumentException("rallyPoint는 0/1만 허용");
-            v.setRallyPoint(rallyPoint);
+
+            v.setRallyPoint(rallyPoint == 1 ? "O" : "X");
         }
 
         return toResponse(v);

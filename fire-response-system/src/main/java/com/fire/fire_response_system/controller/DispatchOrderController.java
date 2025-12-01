@@ -1,86 +1,85 @@
 package com.fire.fire_response_system.controller;
 
-import com.fire.fire_response_system.domain.dispatch.DispatchOrder;
-import com.fire.fire_response_system.dto.dispatch.AssignVehicleRequest;
-import com.fire.fire_response_system.dto.dispatch.CreateDispatchOrderRequest;
-import com.fire.fire_response_system.dto.dispatch.CreateDispatchOrderResponse;
-import com.fire.fire_response_system.dto.dispatch.UpdateDispatchOrderRequest;
-import com.fire.fire_response_system.dto.dispatch.UpdateVehicleStatusRequest;
+import com.fire.fire_response_system.dto.dispatch.*;
 import com.fire.fire_response_system.service.DispatchOrderService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
+@Tag(
+        name = "출동명령 / 배치 편성 API",
+        description = "출동명령 생성, 배치 자동 생성, 차량 편성, 복귀, 조회 기능 제공"
+)
 @RestController
 @RequestMapping("/api/dispatch-orders")
 @RequiredArgsConstructor
 public class DispatchOrderController {
-    private final DispatchOrderService service;
+
+    private final DispatchOrderService dispatchOrderService;
 
     @PostMapping
-    @Operation(summary = "출동 명령 생성", description = "제목/내용으로 출동 명령을 생성 (초기 상태 DRAFT)")
-    public ResponseEntity<CreateDispatchOrderResponse> create(@RequestBody CreateDispatchOrderRequest req) {
-        Long id = service.create(req);
-        return ResponseEntity.status(201).body(new CreateDispatchOrderResponse(id, "created"));
+    @Operation(summary = "출동명령 생성", description = "같은 주소·진행중(DRAFT)이면 기존 출동명령을 재사용합니다.")
+    public ResponseEntity<DispatchOrderResponse> createOrder(
+            @RequestBody CreateDispatchOrderRequest req
+    ) {
+        return ResponseEntity.ok(dispatchOrderService.createOrder(req));
+    }
+
+    @PostMapping("/{orderId}/assign")
+    @Operation(summary = "차량 편성", description = "vehicleIds만 보내면 서버가 자동으로 배치 번호를 결정합니다.")
+    public ResponseEntity<VehicleAssignResponse> assignVehicles(
+            @PathVariable Long orderId,
+            @RequestBody VehicleAssignRequest req
+    ) {
+        return ResponseEntity.ok(dispatchOrderService.assignVehicles(orderId, req));
+    }
+
+    @PostMapping("/{orderId}/return")
+    @Operation(summary = "차량 복귀", description = "차량 상태를 0(대기)로 변경합니다.")
+    public ResponseEntity<String> returnVehicles(
+            @PathVariable Long orderId,
+            @RequestBody VehicleReturnRequest req
+    ) {
+        dispatchOrderService.returnVehicles(orderId, req);
+        return ResponseEntity.ok("복귀 완료");
     }
 
     @GetMapping
-    @Operation(summary = "출동 명령 조회", description = "상태별 필터 (status=0|1|2)")
-    public ResponseEntity<List<DispatchOrder>> list(@RequestParam(required = false) Integer status) {
-        return ResponseEntity.ok(service.list(status));
+    @Operation(
+            summary = "출동명령 목록 조회",
+            description = "출동명령 목록과, 해당 명령에 배치된 모든 소방차의 ID 및 callSign을 반환합니다."
+    )
+    public ResponseEntity<?> listOrders() {
+        return ResponseEntity.ok(dispatchOrderService.listOrders());
     }
 
-    @PatchMapping("/{id}")
-    @Operation(summary = "출동 명령 수정", description = "제목/내용 수정 (필드별 부분수정)")
-    public ResponseEntity<Void> update(@PathVariable Long id, @RequestBody UpdateDispatchOrderRequest req) {
-        service.update(id, req);
-        return ResponseEntity.ok().build();
+    @GetMapping("/{orderId}")
+    @Operation(summary = "출동명령 상세 조회")
+    public ResponseEntity<?> getOrderDetail(@PathVariable Long orderId) {
+        return ResponseEntity.ok(dispatchOrderService.getOrderDetail(orderId));
     }
 
-    @DeleteMapping("/{id}")
-    @Operation(summary = "출동 명령 삭제", description = "작성중/종료 상태만 삭제 가능")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        service.delete(id);
-        return ResponseEntity.noContent().build();
+    @GetMapping("/{orderId}/batches/{batchNo}")
+    @Operation(summary = "배치 상세 조회")
+    public ResponseEntity<?> getBatchDetail(
+            @PathVariable Long orderId,
+            @PathVariable Integer batchNo
+    ) {
+        return ResponseEntity.ok(dispatchOrderService.getBatchDetail(orderId, batchNo));
     }
 
-    @PostMapping("/{id}/send")
-    @Operation(summary = "출동 명령 발송", description = "상태를 SENT로 전환하고 편성 차량 상태를 SENT로 표시")
-    public ResponseEntity<Void> send(@PathVariable Long id) {
-        service.send(id);
-        return ResponseEntity.ok().build();
+    @GetMapping("/vehicle/{vehicleId}")
+    @Operation(
+            summary = "특정 차량의 출동 정보 조회",
+            description = "차량이 현재 배치되어 있는 출동명령(order)을 조회합니다. 배치 중이 아니라면 '출동 상태가 아닙니다.'를 반환합니다."
+    )
+    public ResponseEntity<?> getCurrentDispatchByVehicle(
+            @PathVariable Long vehicleId
+    ) {
+        var res = dispatchOrderService.getCurrentDispatchByVehicle(vehicleId);
+        return ResponseEntity.ok(res);
     }
 
-    @PatchMapping("/{id}/end")
-    @Operation(summary = "출동 명령 종료", description = "상태를 ENDED 로 전환")
-    public ResponseEntity<Void> end(@PathVariable Long id) {
-        service.end(id);
-        return ResponseEntity.ok().build();
-    }
-
-    @PostMapping("/{id}/assign")
-    @Operation(summary = "차량 편성 추가", description = "해당 출동 명령에 차량을 편성 (중복 시 무시)")
-    public ResponseEntity<Void> assign(@PathVariable Long id, @RequestBody AssignVehicleRequest req) {
-        service.assignVehicle(id, req.getVehicleId());
-        return ResponseEntity.ok().build();
-    }
-
-    @DeleteMapping("/{id}/assign/{vehicleId}")
-    @Operation(summary = "차량 편성 제거", description = "편성 해제")
-    public ResponseEntity<Void> unassign(@PathVariable Long id, @PathVariable Long vehicleId) {
-        service.unassignVehicle(id, vehicleId);
-        return ResponseEntity.noContent().build();
-    }
-
-    @PatchMapping("/{id}/vehicles/{vehicleId}/status")
-    @Operation(summary = "편성 차량 문자 상태", description = "0=PENDING,1=SENT,2=CLICKED,3=GPS_RECEIVED")
-    public ResponseEntity<Void> updateVehicleStatus(@PathVariable Long id,
-                                                    @PathVariable Long vehicleId,
-                                                    @RequestBody UpdateVehicleStatusRequest req) {
-        service.updateVehicleStatus(id, vehicleId, req.getStatusCode());
-        return ResponseEntity.ok().build();
-    }
 }

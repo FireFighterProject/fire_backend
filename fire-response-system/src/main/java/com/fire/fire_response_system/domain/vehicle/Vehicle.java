@@ -47,8 +47,12 @@ public class Vehicle {
 
     private Integer status;
 
-    @Column(name = "rally_point")
-    private Integer rallyPoint;
+    /**
+     * rally_point — 자원 집결지 여부 (O/X)
+     * String으로 수정해 Hibernate 타입 오류 방지
+     */
+    @Column(name = "rally_point", length = 1)
+    private String rallyPoint;
 
     /**
      * 출동 횟수 (통계용)

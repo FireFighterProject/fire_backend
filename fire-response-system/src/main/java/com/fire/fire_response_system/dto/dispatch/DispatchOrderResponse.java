@@ -1,18 +1,19 @@
 package com.fire.fire_response_system.dto.dispatch;
 
 import com.fire.fire_response_system.domain.dispatch.DispatchStatus;
-import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
 
 @Getter
-@AllArgsConstructor
-public class DispatchOrderItem {
+@Builder
+public class DispatchOrderResponse {
+
     private Long id;
-    private Long stationId;
     private String title;
-    private String description;
+    private String address;
+    private String content;
     private DispatchStatus status;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
