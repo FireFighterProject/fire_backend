@@ -13,6 +13,13 @@ repositories {
 }
 
 dependencies {
+
+	// 🔥 SOLAPI Java SDK 삭제 (사용 불가)
+	// implementation 'com.solapi:sdk:1.0.3'
+
+	// 🔥 WebClient 사용을 위한 WebFlux 추가
+	implementation 'org.springframework.boot:spring-boot-starter-webflux'
+
 	// === Spring Boot 기본 ===
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
@@ -33,6 +40,9 @@ dependencies {
 	// === Lombok ===
 	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
+
+	// 🔥 @ConfigurationProperties 인식용
+	annotationProcessor 'org.springframework.boot:spring-boot-configuration-processor'
 
 	// === Test ===
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'

@@ -2,11 +2,16 @@ package com.fire.fire_response_system.domain.gps;
 
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "vehicle_gps_log")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder        // ★ 이거 추가해야 builder() 사용 가능!
 public class VehicleGpsLog {
 
     @Id
@@ -19,11 +24,6 @@ public class VehicleGpsLog {
     private Double latitude;
     private Double longitude;
 
-    @Column(name = "created_at")
-    private LocalDateTime createdAt;
-
-    @PrePersist
-    public void onCreate() {
-        this.createdAt = LocalDateTime.now();
-    }
+    @Column(name = "logged_at", nullable = false)
+    private LocalDateTime loggedAt;   // gps 기록 시간
 }

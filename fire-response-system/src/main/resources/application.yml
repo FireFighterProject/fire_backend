@@ -41,3 +41,8 @@ jwt:
 weather:
   api-key: 4Q5DhMUXTayOQ4TFFy2sLw
   base-url: https://apihub.kma.go.kr/api/typ02/openApi/VilageFcstInfoService_2.0/getVilageFcst
+
+solapi:
+  api-key: "NCSTIWXP8BKSKFIH"
+  api-secret: "8IFJQ3XFZHT1BX49F8YEOG6QDYQNGNOG"
+  from: "01079044091"

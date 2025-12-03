@@ -27,45 +27,52 @@ public class GpsService {
 
     /**
      * GPS 단건 수신
-     * - vehicle_location: upsert (없으면 생성, 있으면 업데이트)
-     * - vehicle_gps_log: 항상 이력 기록 남김
+     * - 기존 위치가 있으면 기존 위치를 가리켜서 gps_log에 기록
+     * - vehicle_location은 최신 값으로 갱신
+     * - gps_log에는 "이전값" + "신규값 모두 기록"이 아니라 "이전값만 기록"
+     *   (필요하면 둘 다 기록하는 버전도 만들어줄 수 있음)
      */
     @Transactional
     public void receive(GpsSendRequest req) {
 
-        if (req.getVehicleId() == null) {
+        if (req.getVehicleId() == null)
             throw new IllegalArgumentException("vehicleId는 필수입니다.");
-        }
-        if (req.getLatitude() == null || req.getLongitude() == null) {
+
+        if (req.getLatitude() == null || req.getLongitude() == null)
             throw new IllegalArgumentException("위도/경도는 필수입니다.");
+
+        Long vehicleId = req.getVehicleId();
+        LocalDateTime now = LocalDateTime.now();
+
+        // 1) 👉 기존 위치 조회
+        VehicleLocation exist = locationRepo.findByVehicleId(vehicleId).orElse(null);
+
+        if (exist != null) {
+            // 2) 👉 기존 좌표를 gps_log에 백업
+            VehicleGpsLog oldLog = VehicleGpsLog.builder()
+                    .vehicleId(vehicleId)
+                    .latitude(exist.getLatitude())
+                    .longitude(exist.getLongitude())
+                    .loggedAt(exist.getLastUpdatedAt())
+                    .build();
+
+            logRepo.save(oldLog);
         }
 
-        // 1) 현재 위치 upsert
-        VehicleLocation loc = locationRepo.findByVehicleId(req.getVehicleId())
-                .orElseGet(() -> VehicleLocation.builder()
-                        .vehicleId(req.getVehicleId())
-                        .build()
-                );
+        // 3) 👉 최신 좌표 location에 upsert
+        VehicleLocation loc = (exist == null)
+                ? VehicleLocation.builder().vehicleId(vehicleId).build()
+                : exist;
 
         loc.setLatitude(req.getLatitude());
         loc.setLongitude(req.getLongitude());
-        loc.setLastUpdatedAt(LocalDateTime.now());
+        loc.setLastUpdatedAt(now);
 
         locationRepo.save(loc);
-
-        // 2) 이력 로그 저장
-        VehicleGpsLog log = VehicleGpsLog.builder()
-                .vehicleId(req.getVehicleId())
-                .latitude(req.getLatitude())
-                .longitude(req.getLongitude())
-                .build();
-
-        logRepo.save(log);
     }
 
     /**
-     * 특정 차량의 현재 위치 조회
-     * - 위치가 없으면 "GPS 정보 없음" 메시지 반환
+     * 특정 차량 현재 위치 조회
      */
     @Transactional(readOnly = true)
     public VehicleLocationResponse getLocation(Long vehicleId) {
@@ -77,64 +84,43 @@ public class GpsService {
                         .longitude(loc.getLongitude())
                         .updatedAt(loc.getLastUpdatedAt())
                         .message(null)
-                        .build()
-                )
+                        .build())
                 .orElse(
                         VehicleLocationResponse.builder()
                                 .vehicleId(vehicleId)
-                                .latitude(null)
-                                .longitude(null)
-                                .updatedAt(null)
                                 .message("GPS 정보 없음")
                                 .build()
                 );
     }
 
     /**
-     * 특정 소방서(stationId)에 소속된 모든 차량의 위치 조회
-     * - 차량 목록: vehicles.stationId = :stationId
-     * - 각 차량별로 vehicle_location 조회
-     * - 위도/경도가 없으면 "GPS 정보 없음" 메시지 포함해서 반환
+     * 소방서 소속 차량 현재 위치 조회
      */
     @Transactional(readOnly = true)
     public List<VehicleLocationResponse> getStationLocations(Long stationId) {
 
-        // 1) 해당 소방서의 차량 목록 조회
-        TypedQuery<Vehicle> query = em.createQuery(
-                "SELECT v FROM Vehicle v WHERE v.stationId = :stationId",
-                Vehicle.class
-        );
-        query.setParameter("stationId", stationId);
+        TypedQuery<Vehicle> q = em.createQuery(
+                "SELECT v FROM Vehicle v WHERE v.stationId = :sid", Vehicle.class);
+        q.setParameter("sid", stationId);
 
-        List<Vehicle> vehicles = query.getResultList();
+        List<Vehicle> vehicles = q.getResultList();
         List<VehicleLocationResponse> result = new ArrayList<>();
 
-        // 2) 각 차량별로 현재 위치 붙이기
         for (Vehicle v : vehicles) {
-            VehicleLocation loc = locationRepo.findByVehicleId(v.getId())
-                    .orElse(null);
+            VehicleLocation loc = locationRepo.findByVehicleId(v.getId()).orElse(null);
 
-            if (loc == null || loc.getLatitude() == null || loc.getLongitude() == null) {
-                // GPS 정보 없음
-                result.add(
-                        VehicleLocationResponse.builder()
-                                .vehicleId(v.getId())
-                                .latitude(null)
-                                .longitude(null)
-                                .updatedAt(null)
-                                .message("GPS 정보 없음")
-                                .build()
-                );
+            if (loc == null) {
+                result.add(VehicleLocationResponse.builder()
+                        .vehicleId(v.getId())
+                        .message("GPS 정보 없음")
+                        .build());
             } else {
-                result.add(
-                        VehicleLocationResponse.builder()
-                                .vehicleId(v.getId())
-                                .latitude(loc.getLatitude())
-                                .longitude(loc.getLongitude())
-                                .updatedAt(loc.getLastUpdatedAt())
-                                .message(null)
-                                .build()
-                );
+                result.add(VehicleLocationResponse.builder()
+                        .vehicleId(v.getId())
+                        .latitude(loc.getLatitude())
+                        .longitude(loc.getLongitude())
+                        .updatedAt(loc.getLastUpdatedAt())
+                        .build());
             }
         }
 
@@ -142,24 +128,18 @@ public class GpsService {
     }
 
     /**
-     * GPS가 등록된 모든 차량 위치 목록
-     * - vehicle_location 에 존재하는 vehicleId만 반환
-     * - GPS 등록 안 된 차량은 애초에 결과에 포함되지 않음
+     * GPS가 등록된 모든 차량
      */
     @Transactional(readOnly = true)
     public List<VehicleLocationResponse> getAll() {
 
-        List<VehicleLocation> locations = locationRepo.findAll();
-
-        return locations.stream()
+        return locationRepo.findAll().stream()
                 .map(loc -> VehicleLocationResponse.builder()
                         .vehicleId(loc.getVehicleId())
                         .latitude(loc.getLatitude())
                         .longitude(loc.getLongitude())
                         .updatedAt(loc.getLastUpdatedAt())
-                        .message(null)
-                        .build()
-                )
+                        .build())
                 .toList();
     }
 }
