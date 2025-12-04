@@ -24,7 +24,8 @@ public class SecurityConfig {
         // allowCredentials(true)를 쓸 땐 allowedOriginPatterns 권장
         cfg.setAllowedOriginPatterns(List.of(
                 "http://localhost:5174",
-                "http://localhost:*"
+                "http://localhost:*",
+                "https://fire.rjsgud.com"
         ));
         cfg.setAllowedMethods(List.of("GET","POST","PUT","PATCH","DELETE","OPTIONS"));
         cfg.setAllowedHeaders(List.of("*"));
