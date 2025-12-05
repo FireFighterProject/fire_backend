@@ -71,6 +71,9 @@ public class VehiclesService {
         VehicleBatchResponse res = VehicleBatchResponse.empty();
         int inserted = 0, duplicates = 0;
 
+        // ⭐ 생성된 차량 ID 저장 리스트
+        List<Long> createdIds = new ArrayList<>();
+
         for (int i = 0; i < requests.size(); i++) {
 
             VehicleBatchRequest req = requests.get(i);
@@ -110,17 +113,25 @@ public class VehiclesService {
                     .build();
 
             vehicleRepository.save(v);
+
             inserted++;
+
+            // ⭐ 저장된 차량 ID 기록
+            createdIds.add(v.getId());
         }
 
         res.setTotal(requests.size());
         res.setInserted(inserted);
         res.setDuplicates(duplicates);
+
+        // ⭐ 결과에 vehicle ID 리스트 추가
+        res.setVehicleIds(createdIds);
+
         return res;
     }
 
     // ---------------------------
-    // 3) 차량 목록 조회
+    // 3) 차량 목록 조회 (생략 없이 전체 유지)
     // ---------------------------
     public List<VehicleListItem> list(Long stationId, Integer status,
                                       String typeName, String callSignLike) {
@@ -150,7 +161,7 @@ public class VehiclesService {
                         v.getTypeName(),
                         v.getCallSign(),
                         v.getStatus(),
-                        v.getRallyPoint(),        // rallyPoint as String
+                        v.getRallyPoint(),
                         v.getCapacity(),
                         v.getPersonnel(),
                         v.getAvlNumber(),
@@ -160,7 +171,7 @@ public class VehiclesService {
     }
 
     // ---------------------------
-    // 4) 차량 정보 수정
+    // 4) 차량 정보 수정 (전체 유지)
     // ---------------------------
     @Transactional
     public VehicleResponse update(Long id, VehicleUpdateRequest req) {
@@ -193,7 +204,7 @@ public class VehiclesService {
     }
 
     // ---------------------------
-    // 5) 차량 상태 변경
+    // 5) 차량 상태 변경 (전체 유지)
     // ---------------------------
     @Transactional
     public VehicleResponse updateStatus(Long id, Integer status) {
@@ -209,7 +220,7 @@ public class VehiclesService {
     }
 
     // ---------------------------
-    // 6) 집결지 변경 (토글)
+    // 6) 집결지 변경 (전체 유지)
     // ---------------------------
     @Transactional
     public VehicleResponse updateAssembly(Long id, Integer rallyPoint) {
@@ -218,13 +229,11 @@ public class VehiclesService {
                 .orElseThrow(() -> new IllegalArgumentException("vehicle 없음"));
 
         if (rallyPoint == null) {
-            // toggle
             String newRally = "O".equals(v.getRallyPoint()) ? "X" : "O";
             v.setRallyPoint(newRally);
-
         } else {
             if (rallyPoint != 0 && rallyPoint != 1)
-                throw new IllegalArgumentException("rallyPoint는 0/1만 허용");
+                throw new IllegalArgumentException("rallyPoint는 0/1 만 허용");
 
             v.setRallyPoint(rallyPoint == 1 ? "O" : "X");
         }
