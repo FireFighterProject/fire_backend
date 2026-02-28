@@ -1,3 +1,4 @@
+// src/main/java/com/fire/fire_response_system/controller/VehiclesController.java
 package com.fire.fire_response_system.controller;
 
 import com.fire.fire_response_system.dto.vehicle.*;
@@ -101,7 +102,6 @@ public class VehiclesController {
         return ResponseEntity.status(201).body(vehiclesService.create(req));
     }
 
-
     // -------------------------------
     // 3) 차량 다건 등록 (배치)
     // -------------------------------
@@ -133,14 +133,6 @@ public class VehiclesController {
                 "typeName": "구조",
                 "capacity": 3000,
                 "personnel": 4
-              },
-              {
-                "stationName": "강남소방서",
-                "sido": "서울",
-                "callSign": "강남-02",
-                "typeName": "경펌",
-                "capacity": 1500,
-                "personnel": 3
               }
             ]
             ```<br><br>
@@ -167,7 +159,6 @@ public class VehiclesController {
         return ResponseEntity.ok(vehiclesService.registerBatch(requests));
     }
 
-
     // -------------------------------
     // 4) 차량 목록 조회
     // -------------------------------
@@ -176,11 +167,12 @@ public class VehiclesController {
             summary = "차량 목록 조회",
             description = """
                     등록된 차량 목록을 조건별로 조회합니다.<br>
-                    - stationId: 특정 소방서 ID 기준으로 필터링 (예: 경산소방서만 조회)<br>
-                    - status: 차량 상태로 필터링 (0=대기, 1=활동, 2=철수)<br>
+                    - stationId: 특정 소방서 ID 기준으로 필터링<br>
+                    - status: 차량 상태로 필터링 (0=대기, 1=활동, 2=철수, 3=집결중)<br>
                     - typeName: 차종명으로 필터링 (정확 일치)<br>
-                    - callSign: 호출명 부분 검색 (LIKE 검색, 예: '강남소방서-01' 일부만 입력해도 조회)<br>
-                    - 모든 파라미터는 선택사항이며, 미지정 시 전체 목록을 반환합니다.
+                    - callSign: 호출명 부분 검색 (LIKE 검색)<br>
+                    - 모든 파라미터는 선택사항이며, 미지정 시 전체 목록을 반환합니다.<br>
+                    - Soft Delete 적용: deleted_at이 NULL인 차량만 조회됩니다.
                     """
     )
     @ApiResponses({
@@ -196,7 +188,7 @@ public class VehiclesController {
             Long stationId,
 
             @RequestParam(required = false)
-            @Parameter(description = "차량 상태 (0=대기, 1=활동, 2=철수)")
+            @Parameter(description = "차량 상태 (0=대기, 1=활동, 2=철수, 3=집결중)")
             Integer status,
 
             @RequestParam(required = false)
@@ -218,10 +210,9 @@ public class VehiclesController {
             summary = "차량 정보 수정",
             description = """
                     특정 차량의 기본 정보를 수정합니다.<br>
-                    - path 변수 id: vehicles.id (수정 대상 차량 PK)<br>
-                    - callSign을 변경하는 경우, 동일 stationId 내에서 중복 여부를 검증합니다.<br>
-                    - capacity, personnel, avlNumber, psLteNumber, rallyPoint 등도 함께 변경할 수 있습니다.<br>
-                    - 부분 수정(PATCH)이지만, DTO 설계에 따라 전달된 필드만 반영되도록 서비스에서 처리합니다.
+                    - path 변수 id: vehicles.id<br>
+                    - callSign 변경 시 동일 stationId 내 중복 검증<br>
+                    - Soft Delete 적용: 삭제된 차량(deleted_at != NULL)은 수정 불가
                     """
     )
     @ApiResponses({
@@ -253,7 +244,7 @@ public class VehiclesController {
             summary = "차량 상태 변경",
             description = """
                     특정 차량의 상태(status)를 변경합니다.<br>
-                    - status 코드: 0=대기, 1=활동, 2=철수<br>
+                    - status 코드: 0=대기, 1=활동, 2=철수, 3=집결중<br>
                     - 현황/출동/활동/지도/통계 페이지 집계에 직접 영향을 주는 핵심 값입니다.<br>
                     - 예시: 활동 페이지에서 복귀 처리 시 0(대기)로 변경.
                     """
@@ -272,7 +263,7 @@ public class VehiclesController {
             Long id,
 
             @Valid @RequestBody
-            @Parameter(description = "변경할 상태 코드(0=대기, 1=활동, 2=철수)", required = true)
+            @Parameter(description = "변경할 상태 코드(0=대기, 1=활동, 2=철수, 3=집결중)", required = true)
             VehicleStatusUpdateRequest req
     ) {
         return ResponseEntity.ok(vehiclesService.updateStatus(id, req.getStatus()));
@@ -287,8 +278,7 @@ public class VehiclesController {
             description = """
                     특정 차량의 집결지 표시(rallyPoint)를 변경합니다.<br>
                     - 요청 바디가 없으면(null) 현재 값을 기준으로 토글합니다. (0 → 1, 1 → 0)<br>
-                    - 요청 바디에 rallyPoint(0 또는 1)를 전달하면 해당 값으로 강제 설정합니다.<br>
-                    - 평상시/재난시 현황 집계에서 '자원 집결지' 여부 판단에 사용됩니다.
+                    - 요청 바디에 rallyPoint(0 또는 1)를 전달하면 해당 값으로 강제 설정합니다.
                     """
     )
     @ApiResponses({
@@ -310,5 +300,49 @@ public class VehiclesController {
     ) {
         Integer value = (req == null) ? null : req.getRallyPoint();
         return ResponseEntity.ok(vehiclesService.updateAssembly(id, value));
+    }
+
+    // -------------------------------
+    // 8) 차량 단건 삭제 (Soft Delete)
+    // -------------------------------
+    @DeleteMapping("/vehicles/{id}")
+    @Operation(
+            summary = "차량 단건 삭제",
+            description = "선택한 차량 1대를 Soft Delete 처리합니다. (deleted_at 설정)"
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "삭제 성공"),
+            @ApiResponse(responseCode = "404", description = "차량 없음"),
+            @ApiResponse(responseCode = "500", description = "서버 오류")
+    })
+    public ResponseEntity<Void> deleteOne(
+            @PathVariable
+            @Parameter(description = "삭제할 차량 ID(vehicles.id)", required = true)
+            Long id
+    ) {
+        vehiclesService.deleteOne(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    // -------------------------------
+    // 9) 차량 다건 삭제 (Soft Delete)
+    // -------------------------------
+    @DeleteMapping("/vehicles")
+    @Operation(
+            summary = "차량 다건 삭제",
+            description = "체크된 여러 차량을 한 번에 Soft Delete 처리합니다. (deleted_at 설정)"
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "다건 삭제 성공"),
+            @ApiResponse(responseCode = "400", description = "요청 데이터 오류"),
+            @ApiResponse(responseCode = "500", description = "서버 오류")
+    })
+    public ResponseEntity<VehicleBatchDeleteResponse> deleteBatch(
+            @RequestBody
+            @Valid
+            @Parameter(description = "삭제할 차량 ID 목록", required = true)
+            VehicleDeleteRequest req
+    ) {
+        return ResponseEntity.ok(vehiclesService.deleteBatch(req.getVehicleIds()));
     }
 }

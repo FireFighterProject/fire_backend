@@ -8,4 +8,6 @@ import java.util.Optional;
 public interface VehicleLocationRepository extends JpaRepository<VehicleLocation, Long> {
 
     Optional<VehicleLocation> findByVehicleId(Long vehicleId);
+
+    void deleteByVehicleId(Long vehicleId);
 }

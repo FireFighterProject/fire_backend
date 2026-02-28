@@ -16,4 +16,6 @@ public interface DispatchVehicleMapRepository extends JpaRepository<DispatchVehi
 
     Optional<DispatchVehicleMap> findByVehicleId(Long vehicleId);
 
+    void deleteByVehicleId(Long vehicleId);
+
 }

@@ -8,7 +8,8 @@ import java.time.LocalDateTime;
 @Table(name = "vehicles",
         indexes = {
                 @Index(name = "idx_vehicles_station", columnList = "station_id"),
-                @Index(name = "idx_vehicles_status", columnList = "status")
+                @Index(name = "idx_vehicles_status", columnList = "status"),
+                @Index(name = "idx_vehicles_deleted", columnList = "deleted_at")
         },
         uniqueConstraints = {
                 @UniqueConstraint(name = "uk_station_call_sign", columnNames = {"station_id","call_sign"})
@@ -45,11 +46,13 @@ public class Vehicle {
     @Column(name = "ps_lte_number")
     private String psLteNumber;
 
+    /**
+     * 차량 상태 (0=대기, 1=활동, 2=철수)
+     */
     private Integer status;
 
     /**
      * rally_point — 자원 집결지 여부 (O/X)
-     * String으로 수정해 Hibernate 타입 오류 방지
      */
     @Column(name = "rally_point", length = 1)
     private String rallyPoint;
@@ -65,6 +68,14 @@ public class Vehicle {
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    /**
+     * 🔥 Soft Delete용 컬럼
+     * null  : 정상 차량
+     * not null : 삭제된 차량
+     */
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 
     @PrePersist
     public void onCreate() {

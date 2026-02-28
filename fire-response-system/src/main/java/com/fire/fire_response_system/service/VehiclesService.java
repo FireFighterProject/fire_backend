@@ -1,10 +1,11 @@
+// src/main/java/com/fire/fire_response_system/service/VehiclesService.java
 package com.fire.fire_response_system.service;
 
 import com.fire.fire_response_system.domain.vehicle.Vehicle;
 import com.fire.fire_response_system.domain.station.Station;
 import com.fire.fire_response_system.dto.vehicle.*;
-import com.fire.fire_response_system.repository.StationRepository;
 import com.fire.fire_response_system.repository.VehicleRepository;
+import com.fire.fire_response_system.repository.StationRepository;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
@@ -31,20 +32,17 @@ public class VehiclesService {
 
         Station station = stationRepository
                 .findBySidoAndName(req.getSido(), req.getStationName())
-                .orElseThrow(() ->
-                        new IllegalArgumentException("존재하지 않는 소방서: "
-                                + req.getSido() + " " + req.getStationName()));
+                .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 소방서"));
 
-        Long stationId = station.getId();
-
-        if (vehicleRepository.existsByStationIdAndCallSign(stationId, req.getCallSign())) {
-            throw new IllegalStateException("동일 소방서에 이미 존재하는 callSign");
+        if (vehicleRepository.existsByStationIdAndCallSignAndDeletedAtIsNull(
+                station.getId(), req.getCallSign())) {
+            throw new IllegalStateException("동일 소방서에 이미 callSign 존재");
         }
 
         String rally = "경북".equals(req.getSido()) ? "X" : "O";
 
         Vehicle v = Vehicle.builder()
-                .stationId(stationId)
+                .stationId(station.getId())
                 .sido(req.getSido())
                 .callSign(req.getCallSign())
                 .typeName(req.getTypeName())
@@ -54,12 +52,12 @@ public class VehiclesService {
                 .psLteNumber(req.getPsLteNumber())
                 .status(0)
                 .rallyPoint(rally)
+                .dispatchCount(0)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
 
-        var saved = vehicleRepository.save(v);
-        return toResponse(saved);
+        return toResponse(vehicleRepository.save(v));
     }
 
     // ---------------------------
@@ -70,8 +68,6 @@ public class VehiclesService {
 
         VehicleBatchResponse res = VehicleBatchResponse.empty();
         int inserted = 0, duplicates = 0;
-
-        // ⭐ 생성된 차량 ID 저장 리스트
         List<Long> createdIds = new ArrayList<>();
 
         for (int i = 0; i < requests.size(); i++) {
@@ -87,9 +83,8 @@ public class VehiclesService {
                 continue;
             }
 
-            Long stationId = station.getId();
-
-            if (vehicleRepository.existsByStationIdAndCallSign(stationId, req.getCallSign())) {
+            if (vehicleRepository.existsByStationIdAndCallSignAndDeletedAtIsNull(
+                    station.getId(), req.getCallSign())) {
                 duplicates++;
                 res.getMessages().add("중복 스킵: row=" + (i + 1));
                 continue;
@@ -98,7 +93,7 @@ public class VehiclesService {
             String rally = "경북".equals(req.getSido()) ? "X" : "O";
 
             Vehicle v = Vehicle.builder()
-                    .stationId(stationId)
+                    .stationId(station.getId())
                     .sido(req.getSido())
                     .typeName(req.getTypeName())
                     .callSign(req.getCallSign())
@@ -108,30 +103,26 @@ public class VehiclesService {
                     .psLteNumber(req.getPsLteNumber())
                     .status(0)
                     .rallyPoint(rally)
+                    .dispatchCount(0)
                     .createdAt(LocalDateTime.now())
                     .updatedAt(LocalDateTime.now())
                     .build();
 
             vehicleRepository.save(v);
-
             inserted++;
-
-            // ⭐ 저장된 차량 ID 기록
             createdIds.add(v.getId());
         }
 
         res.setTotal(requests.size());
         res.setInserted(inserted);
         res.setDuplicates(duplicates);
-
-        // ⭐ 결과에 vehicle ID 리스트 추가
         res.setVehicleIds(createdIds);
 
         return res;
     }
 
     // ---------------------------
-    // 3) 차량 목록 조회 (생략 없이 전체 유지)
+    // 3) 차량 목록 조회 (Soft Delete 반영)
     // ---------------------------
     public List<VehicleListItem> list(Long stationId, Integer status,
                                       String typeName, String callSignLike) {
@@ -141,6 +132,8 @@ public class VehiclesService {
         var root = cq.from(Vehicle.class);
 
         List<Predicate> p = new ArrayList<>();
+
+        p.add(cb.isNull(root.get("deletedAt"))); // Soft Delete 제외
 
         if (stationId != null) p.add(cb.equal(root.get("stationId"), stationId));
         if (status != null) p.add(cb.equal(root.get("status"), status));
@@ -171,27 +164,24 @@ public class VehiclesService {
     }
 
     // ---------------------------
-    // 4) 차량 정보 수정 (전체 유지)
+    // 4) 차량 정보 수정
     // ---------------------------
     @Transactional
     public VehicleResponse update(Long id, VehicleUpdateRequest req) {
 
-        var v = vehicleRepository.findById(id)
+        Vehicle v = vehicleRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("vehicle 없음"));
 
+        if (v.getDeletedAt() != null)
+            throw new IllegalStateException("삭제된 차량");
+
         if (req.getCallSign() != null && !req.getCallSign().isBlank()) {
-            String newCall = req.getCallSign();
-
-            if (!newCall.equals(v.getCallSign())) {
-                boolean dup = vehicleRepository
-                        .existsByStationIdAndCallSignAndIdNot(
-                                v.getStationId(), newCall, v.getId());
-
-                if (dup)
-                    throw new IllegalStateException("동일 소방서에 이미 callSign 존재");
-
-                v.setCallSign(newCall);
+            if (!req.getCallSign().equals(v.getCallSign()) &&
+                    vehicleRepository.existsByStationIdAndCallSignAndIdNotAndDeletedAtIsNull(
+                            v.getStationId(), req.getCallSign(), v.getId())) {
+                throw new IllegalStateException("동일 소방서에 이미 callSign 존재");
             }
+            v.setCallSign(req.getCallSign());
         }
 
         if (req.getTypeName() != null) v.setTypeName(req.getTypeName());
@@ -204,41 +194,70 @@ public class VehiclesService {
     }
 
     // ---------------------------
-    // 5) 차량 상태 변경 (전체 유지)
+    // 5) 차량 상태 변경
     // ---------------------------
     @Transactional
     public VehicleResponse updateStatus(Long id, Integer status) {
 
-        if (status == null || status < 0 || status > 2)
-            throw new IllegalArgumentException("status는 0/1/2만 허용");
+        // ✅ 3(집결중) 추가
+        if (status == null || status < 0 || status > 3)
+            throw new IllegalArgumentException("status는 0/1/2/3만 허용");
 
-        var v = vehicleRepository.findById(id)
+        Vehicle v = vehicleRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("vehicle 없음"));
+
+        if (v.getDeletedAt() != null)
+            throw new IllegalStateException("삭제된 차량");
 
         v.setStatus(status);
         return toResponse(v);
     }
 
     // ---------------------------
-    // 6) 집결지 변경 (전체 유지)
+    // 6) 집결지 변경
     // ---------------------------
     @Transactional
     public VehicleResponse updateAssembly(Long id, Integer rallyPoint) {
 
-        var v = vehicleRepository.findById(id)
+        Vehicle v = vehicleRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("vehicle 없음"));
 
+        if (v.getDeletedAt() != null)
+            throw new IllegalStateException("삭제된 차량");
+
         if (rallyPoint == null) {
-            String newRally = "O".equals(v.getRallyPoint()) ? "X" : "O";
-            v.setRallyPoint(newRally);
+            v.setRallyPoint("O".equals(v.getRallyPoint()) ? "X" : "O");
         } else {
             if (rallyPoint != 0 && rallyPoint != 1)
-                throw new IllegalArgumentException("rallyPoint는 0/1 만 허용");
-
+                throw new IllegalArgumentException("rallyPoint는 0/1만 허용");
             v.setRallyPoint(rallyPoint == 1 ? "O" : "X");
         }
 
         return toResponse(v);
+    }
+
+    // ---------------------------
+    // 7) 차량 단건 Soft Delete
+    // ---------------------------
+    @Transactional
+    public void deleteOne(Long id) {
+
+        Vehicle v = vehicleRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("vehicle 없음"));
+
+        if (v.getDeletedAt() != null) return;
+
+        v.setDeletedAt(LocalDateTime.now());
+    }
+
+    // ---------------------------
+    // 8) 차량 다건 Soft Delete
+    // ---------------------------
+    @Transactional
+    public VehicleBatchDeleteResponse deleteBatch(List<Long> ids) {
+
+        int deleted = vehicleRepository.softDeleteByIdIn(ids);
+        return new VehicleBatchDeleteResponse(ids.size(), deleted);
     }
 
     private static VehicleResponse toResponse(Vehicle v) {

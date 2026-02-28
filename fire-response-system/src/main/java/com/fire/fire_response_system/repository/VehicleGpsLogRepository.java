@@ -4,4 +4,5 @@ import com.fire.fire_response_system.domain.gps.VehicleGpsLog;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface VehicleGpsLogRepository extends JpaRepository<VehicleGpsLog, Long> {
+    void deleteByVehicleId(Long vehicleId);
 }
