@@ -2,18 +2,25 @@ package com.fire.fire_response_system.domain.vehicle;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.Where;
+
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "vehicles",
+@Table(
+        name = "vehicles",
         indexes = {
                 @Index(name = "idx_vehicles_station", columnList = "station_id"),
                 @Index(name = "idx_vehicles_status", columnList = "status"),
                 @Index(name = "idx_vehicles_deleted", columnList = "deleted_at")
         },
         uniqueConstraints = {
-                @UniqueConstraint(name = "uk_station_call_sign", columnNames = {"station_id","call_sign"})
-        })
+                @UniqueConstraint(name = "uk_station_call_sign", columnNames = {"station_id", "call_sign"})
+        }
+)
+@SQLDelete(sql = "UPDATE vehicles SET deleted_at = NOW() WHERE id = ?")
+@Where(clause = "deleted_at IS NULL")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -47,7 +54,7 @@ public class Vehicle {
     private String psLteNumber;
 
     /**
-     * 차량 상태 (0=대기, 1=활동, 2=철수)
+     * 차량 상태 (0=대기, 1=활동, 2=철수, 3=집결중)
      */
     private Integer status;
 
@@ -70,9 +77,9 @@ public class Vehicle {
     private LocalDateTime updatedAt;
 
     /**
-     * 🔥 Soft Delete용 컬럼
-     * null  : 정상 차량
-     * not null : 삭제된 차량
+     * Soft Delete용 컬럼
+     * null      : 정상 차량
+     * not null  : 삭제된 차량
      */
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
@@ -81,9 +88,8 @@ public class Vehicle {
     public void onCreate() {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
-        if (this.dispatchCount == null) {
-            this.dispatchCount = 0;
-        }
+        if (this.dispatchCount == null) this.dispatchCount = 0;
+        if (this.status == null) this.status = 0; // 기본 대기
     }
 
     @PreUpdate
