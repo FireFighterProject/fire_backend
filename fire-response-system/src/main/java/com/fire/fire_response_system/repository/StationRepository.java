@@ -14,6 +14,9 @@ public interface StationRepository extends JpaRepository<Station, Long> {
     // sido + name 단건 조회
     Optional<Station> findBySidoAndName(String sido, String name);
 
+    // name 단독 조회 (sido 없을 때)
+    Optional<Station> findFirstByName(String name);
+
     // 지역별 조회
     List<Station> findBySido(String sido);
 }

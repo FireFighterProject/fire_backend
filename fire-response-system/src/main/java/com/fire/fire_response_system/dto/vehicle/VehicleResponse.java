@@ -4,14 +4,15 @@ import java.time.LocalDateTime;
 
 public record VehicleResponse(
         Long id,
-        Long stationId,        //  Long
-        String sido,           //  String
+        Long stationId,
+        String sido,
         String typeName,
         String callSign,
         Integer capacity,
         Integer personnel,
         String avlNumber,
         String psLteNumber,
+        String phoneNumber,
         Integer status,
         String rallyPoint,
         LocalDateTime createdAt,

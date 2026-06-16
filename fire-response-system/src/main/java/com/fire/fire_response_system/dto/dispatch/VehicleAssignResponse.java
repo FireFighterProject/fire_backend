@@ -1,6 +1,5 @@
 package com.fire.fire_response_system.dto.dispatch;
 
-import com.fire.fire_response_system.domain.vehicle.Vehicle;
 import lombok.Builder;
 import lombok.Getter;
 

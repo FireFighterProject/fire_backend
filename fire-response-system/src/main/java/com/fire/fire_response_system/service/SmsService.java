@@ -40,10 +40,9 @@ public class SmsService {
         Vehicle vehicle = vehicleRepository.findById(vehicleId)
                 .orElseThrow(() -> new IllegalArgumentException("차량 없음: ID=" + vehicleId));
 
-        // PS-LTE 전화번호
-        String rawPhone = vehicle.getAvlNumber();
+        String rawPhone = vehicle.getPhoneNumber();
         if (rawPhone == null || rawPhone.isBlank()) {
-            throw new IllegalArgumentException("차량 AVL 번호가 없습니다.");
+            throw new IllegalArgumentException("차량 연락처가 없습니다.");
         }
 
         // 010-1234-5678 → 01012345678

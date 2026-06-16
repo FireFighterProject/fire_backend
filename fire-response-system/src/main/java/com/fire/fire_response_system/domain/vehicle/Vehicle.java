@@ -67,6 +67,9 @@ public class Vehicle {
     /**
      * 출동 횟수 (통계용)
      */
+    @Column(name = "phone_number", length = 20)
+    private String phoneNumber;
+
     @Column(name = "dispatch_count", nullable = false)
     private Integer dispatchCount;
 

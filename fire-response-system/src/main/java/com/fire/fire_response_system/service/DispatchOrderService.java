@@ -154,6 +154,7 @@ public class DispatchOrderService {
                 .personnel(v.getPersonnel())
                 .avlNumber(v.getAvlNumber())
                 .psLteNumber(v.getPsLteNumber())
+                .phoneNumber(v.getPhoneNumber())
                 .build();
     }
 

@@ -31,7 +31,7 @@ public class VehiclesService {
     public VehicleResponse create(VehicleCreateRequest req) {
 
         Station station = stationRepository
-                .findBySidoAndName(req.getSido(), req.getStationName())
+                .findFirstByName(req.getStationName())
                 .orElseThrow(() -> new IllegalArgumentException("존재하지 않는 소방서"));
 
         if (vehicleRepository.existsByStationIdAndCallSignAndDeletedAtIsNull(
@@ -39,17 +39,19 @@ public class VehiclesService {
             throw new IllegalStateException("동일 소방서에 이미 callSign 존재");
         }
 
-        String rally = "경북".equals(req.getSido()) ? "X" : "O";
+        String sido = station.getSido();
+        String rally = "경북".equals(sido) ? "X" : "O";
 
         Vehicle v = Vehicle.builder()
                 .stationId(station.getId())
-                .sido(req.getSido())
+                .sido(sido)
                 .callSign(req.getCallSign())
                 .typeName(req.getTypeName())
                 .capacity(req.getCapacity())
                 .personnel(req.getPersonnel())
                 .avlNumber(req.getAvlNumber())
                 .psLteNumber(req.getPsLteNumber())
+                .phoneNumber(req.getPhoneNumber())
                 .status(0)
                 .rallyPoint(rally)
                 .dispatchCount(0)
@@ -73,7 +75,7 @@ public class VehiclesService {
             VehicleBatchRequest req = requests.get(i);
 
             Station station = stationRepository
-                    .findBySidoAndName(req.getSido(), req.getStationName())
+                    .findFirstByName(req.getStationName())
                     .orElse(null);
 
             if (station == null) {
@@ -88,17 +90,19 @@ public class VehiclesService {
                 continue;
             }
 
-            String rally = "경북".equals(req.getSido()) ? "X" : "O";
+            String sido = station.getSido();
+            String rally = "경북".equals(sido) ? "X" : "O";
 
             Vehicle v = Vehicle.builder()
                     .stationId(station.getId())
-                    .sido(req.getSido())
+                    .sido(sido)
                     .typeName(req.getTypeName())
                     .callSign(req.getCallSign())
                     .capacity(req.getCapacity())
                     .personnel(req.getPersonnel())
                     .avlNumber(req.getAvlNumber())
                     .psLteNumber(req.getPsLteNumber())
+                    .phoneNumber(req.getPhoneNumber())
                     .status(0)
                     .rallyPoint(rally)
                     .dispatchCount(0)
@@ -154,7 +158,8 @@ public class VehiclesService {
                         v.getCapacity(),
                         v.getPersonnel(),
                         v.getAvlNumber(),
-                        v.getPsLteNumber()
+                        v.getPsLteNumber(),
+                        v.getPhoneNumber()
                 ))
                 .toList();
     }
@@ -185,6 +190,7 @@ public class VehiclesService {
         if (req.getPersonnel() != null) v.setPersonnel(req.getPersonnel());
         if (req.getAvlNumber() != null) v.setAvlNumber(req.getAvlNumber());
         if (req.getPsLteNumber() != null) v.setPsLteNumber(req.getPsLteNumber());
+        if (req.getPhoneNumber() != null) v.setPhoneNumber(req.getPhoneNumber());
 
         return toResponse(v);
     }
@@ -262,6 +268,7 @@ public class VehiclesService {
                 v.getTypeName(), v.getCallSign(),
                 v.getCapacity(), v.getPersonnel(),
                 v.getAvlNumber(), v.getPsLteNumber(),
+                v.getPhoneNumber(),
                 v.getStatus(), v.getRallyPoint(),
                 v.getCreatedAt(), v.getUpdatedAt()
         );

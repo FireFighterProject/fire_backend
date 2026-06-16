@@ -17,4 +17,5 @@ public class VehicleSummary {
     private Integer personnel;
     private String avlNumber;
     private String psLteNumber;
+    private String phoneNumber;
 }

@@ -8,9 +8,9 @@ public record VehicleListItem(
         String callSign,
         Integer status,
         String rallyPoint,
-        // 추가 필드 4개
         Integer capacity,
         Integer personnel,
         String avlNumber,
-        String psLteNumber
+        String psLteNumber,
+        String phoneNumber
 ) {}
