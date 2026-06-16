@@ -1,7 +1,10 @@
 package com.fire.fire_response_system.controller;
 
 import com.fire.fire_response_system.dto.gps.GpsSendRequest;
+import com.fire.fire_response_system.dto.gps.VehicleLocationResponse;
 import com.fire.fire_response_system.service.GpsService;
+
+import java.util.List;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -30,21 +33,21 @@ public class GpsController {
     /** 특정 차량 위치 조회 */
     @GetMapping("/location/{vehicleId}")
     @Operation(summary = "특정 차량 현재 위치 조회")
-    public ResponseEntity<?> getLocation(@PathVariable Long vehicleId) {
+    public ResponseEntity<VehicleLocationResponse> getLocation(@PathVariable Long vehicleId) {
         return ResponseEntity.ok(gpsService.getLocation(vehicleId));
     }
 
     /** 소방서 차량 위치 조회 */
     @GetMapping("/station/{stationId}")
     @Operation(summary = "소방서 소속 차량 전체 현재 위치 조회")
-    public ResponseEntity<?> getStationLocations(@PathVariable Long stationId) {
+    public ResponseEntity<List<VehicleLocationResponse>> getStationLocations(@PathVariable Long stationId) {
         return ResponseEntity.ok(gpsService.getStationLocations(stationId));
     }
 
     /** 모든 차량 GPS 조회 (GPS 등록 차량만) */
     @GetMapping("/all")
     @Operation(summary = "GPS 등록된 모든 차량 위치 조회")
-    public ResponseEntity<?> getAllLocations() {
+    public ResponseEntity<List<VehicleLocationResponse>> getAllLocations() {
         return ResponseEntity.ok(gpsService.getAll());
     }
 }

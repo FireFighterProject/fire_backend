@@ -53,8 +53,6 @@ public class VehiclesService {
                 .status(0)
                 .rallyPoint(rally)
                 .dispatchCount(0)
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
                 .build();
 
         return toResponse(vehicleRepository.save(v));
@@ -104,8 +102,6 @@ public class VehiclesService {
                     .status(0)
                     .rallyPoint(rally)
                     .dispatchCount(0)
-                    .createdAt(LocalDateTime.now())
-                    .updatedAt(LocalDateTime.now())
                     .build();
 
             vehicleRepository.save(v);

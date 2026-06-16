@@ -107,7 +107,6 @@ public class DispatchOrderService {
             );
 
             v.setStatus(1); // 활동
-            vehicleRepo.save(v);
 
             resultVehicles.add(toSummary(v));
         }
@@ -131,7 +130,6 @@ public class DispatchOrderService {
                     .orElseThrow(() -> new IllegalArgumentException("차량 없음: " + vehicleId));
 
             v.setStatus(0); // 대기
-            vehicleRepo.save(v);
         }
     }
 

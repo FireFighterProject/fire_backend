@@ -8,6 +8,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @Tag(
         name = "출동명령 / 배치 편성 API",
         description = "출동명령 생성, 배치 자동 생성, 차량 편성, 복귀, 조회 기능 제공"
@@ -51,19 +53,19 @@ public class DispatchOrderController {
             summary = "출동명령 목록 조회",
             description = "출동명령 목록과, 해당 명령에 배치된 모든 소방차의 ID 및 callSign을 반환합니다."
     )
-    public ResponseEntity<?> listOrders() {
+    public ResponseEntity<List<DispatchOrderListItem>> listOrders() {
         return ResponseEntity.ok(dispatchOrderService.listOrders());
     }
 
     @GetMapping("/{orderId}")
     @Operation(summary = "출동명령 상세 조회")
-    public ResponseEntity<?> getOrderDetail(@PathVariable Long orderId) {
+    public ResponseEntity<DispatchOrderDetail> getOrderDetail(@PathVariable Long orderId) {
         return ResponseEntity.ok(dispatchOrderService.getOrderDetail(orderId));
     }
 
     @GetMapping("/{orderId}/batches/{batchNo}")
     @Operation(summary = "배치 상세 조회")
-    public ResponseEntity<?> getBatchDetail(
+    public ResponseEntity<BatchDetail> getBatchDetail(
             @PathVariable Long orderId,
             @PathVariable Integer batchNo
     ) {
@@ -75,7 +77,7 @@ public class DispatchOrderController {
             summary = "특정 차량의 출동 정보 조회",
             description = "차량이 현재 배치되어 있는 출동명령(order)을 조회합니다. 배치 중이 아니라면 '출동 상태가 아닙니다.'를 반환합니다."
     )
-    public ResponseEntity<?> getCurrentDispatchByVehicle(
+    public ResponseEntity<VehicleCurrentDispatchResponse> getCurrentDispatchByVehicle(
             @PathVariable Long vehicleId
     ) {
         var res = dispatchOrderService.getCurrentDispatchByVehicle(vehicleId);
