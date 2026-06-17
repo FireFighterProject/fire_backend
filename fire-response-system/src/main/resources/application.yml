@@ -10,7 +10,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: none   # 이미 스키마 만들어뒀으니 none 유지
+      ddl-auto: update
     show-sql: true
     properties:
       hibernate:
