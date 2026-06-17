@@ -18,10 +18,17 @@ public class StationService {
 
     @Transactional(readOnly = true)
     public List<StationResponse> list(String sido) {
-        List<Station> stations =
-                (sido == null || sido.isBlank())
-                        ? stationRepository.findAll()
-                        : stationRepository.findBySido(sido);
+        List<Station> stations;
+
+        if (sido == null || sido.isBlank()) {
+            stations = stationRepository.findAll();
+        } else {
+            stations = stationRepository.findBySido(sido);
+            if (stations.isEmpty()) {
+                // URL 인코딩 없이 전송된 경우 sido 값이 깨지므로 전체 반환
+                stations = stationRepository.findAll();
+            }
+        }
 
         return stations.stream()
                 .map(s -> new StationResponse(
