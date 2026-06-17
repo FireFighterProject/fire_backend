@@ -4,6 +4,7 @@ import com.fire.fire_response_system.dto.dispatch.*;
 import com.fire.fire_response_system.service.DispatchOrderService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -24,7 +25,7 @@ public class DispatchOrderController {
     @PostMapping
     @Operation(summary = "출동명령 생성", description = "같은 주소·진행중(DRAFT)이면 기존 출동명령을 재사용합니다.")
     public ResponseEntity<DispatchOrderResponse> createOrder(
-            @RequestBody CreateDispatchOrderRequest req
+            @Valid @RequestBody CreateDispatchOrderRequest req
     ) {
         return ResponseEntity.ok(dispatchOrderService.createOrder(req));
     }

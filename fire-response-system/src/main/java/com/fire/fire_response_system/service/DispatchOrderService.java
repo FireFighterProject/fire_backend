@@ -256,12 +256,13 @@ public class DispatchOrderService {
     @Transactional(readOnly = true)
     public VehicleCurrentDispatchResponse getCurrentDispatchByVehicle(Long vehicleId) {
 
-        DispatchVehicleMap map = mapRepo.findByVehicleId(vehicleId)
-                .orElse(null);
+        List<DispatchVehicleMap> maps = mapRepo.findActiveMaps(vehicleId, DispatchStatus.ENDED);
 
-        if (map == null) {
+        if (maps.isEmpty()) {
             return VehicleCurrentDispatchResponse.notAssigned();
         }
+
+        DispatchVehicleMap map = maps.get(0);
 
         DispatchAssignment batch = map.getAssignment();
         DispatchOrder order = batch.getOrder();
