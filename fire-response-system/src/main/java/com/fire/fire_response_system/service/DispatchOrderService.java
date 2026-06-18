@@ -96,6 +96,9 @@ public class DispatchOrderService {
             Vehicle v = vehicleRepo.findById(vehicleId)
                     .orElseThrow(() -> new IllegalArgumentException("차량 없음: " + vehicleId));
 
+            if (v.getStatus() != 0 && v.getStatus() != 2)
+                throw new IllegalStateException("편성 불가 차량(대기·복귀중만 허용): " + vehicleId);
+
             if (mapRepo.existsByAssignmentIdAndVehicleId(batch.getId(), vehicleId))
                 continue;
 
@@ -129,7 +132,7 @@ public class DispatchOrderService {
             Vehicle v = vehicleRepo.findById(vehicleId)
                     .orElseThrow(() -> new IllegalArgumentException("차량 없음: " + vehicleId));
 
-            v.setStatus(0); // 대기
+            v.setStatus(2); // 복귀중
         }
     }
 

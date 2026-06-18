@@ -168,7 +168,7 @@ public class VehiclesController {
             description = """
                     등록된 차량 목록을 조건별로 조회합니다.<br>
                     - stationId: 특정 소방서 ID 기준으로 필터링<br>
-                    - status: 차량 상태로 필터링 (0=대기, 1=활동, 2=철수, 3=집결중)<br>
+                    - status: 차량 상태로 필터링 (0=대기, 1=활동, 2=복귀중(철수), 3=집결중)<br>
                     - typeName: 차종명으로 필터링 (정확 일치)<br>
                     - callSign: 호출명 부분 검색 (LIKE 검색)<br>
                     - 모든 파라미터는 선택사항이며, 미지정 시 전체 목록을 반환합니다.<br>
@@ -188,7 +188,7 @@ public class VehiclesController {
             Long stationId,
 
             @RequestParam(required = false)
-            @Parameter(description = "차량 상태 (0=대기, 1=활동, 2=철수, 3=집결중)")
+            @Parameter(description = "차량 상태 (0=대기, 1=활동, 2=복귀중(철수), 3=집결중)")
             Integer status,
 
             @RequestParam(required = false)
@@ -244,7 +244,7 @@ public class VehiclesController {
             summary = "차량 상태 변경",
             description = """
                     특정 차량의 상태(status)를 변경합니다.<br>
-                    - status 코드: 0=대기, 1=활동, 2=철수, 3=집결중<br>
+                    - status 코드: 0=대기, 1=활동, 2=복귀중(철수), 3=집결중<br>
                     - 현황/출동/활동/지도/통계 페이지 집계에 직접 영향을 주는 핵심 값입니다.<br>
                     - 예시: 활동 페이지에서 복귀 처리 시 0(대기)로 변경.
                     """
@@ -263,7 +263,7 @@ public class VehiclesController {
             Long id,
 
             @Valid @RequestBody
-            @Parameter(description = "변경할 상태 코드(0=대기, 1=활동, 2=철수, 3=집결중)", required = true)
+            @Parameter(description = "변경할 상태 코드(0=대기, 1=활동, 2=복귀중(철수), 3=집결중)", required = true)
             VehicleStatusUpdateRequest req
     ) {
         return ResponseEntity.ok(vehiclesService.updateStatus(id, req.getStatus()));

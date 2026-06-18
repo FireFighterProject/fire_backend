@@ -31,7 +31,7 @@ public class DispatchOrderController {
     }
 
     @PostMapping("/{orderId}/assign")
-    @Operation(summary = "차량 편성", description = "vehicleIds만 보내면 서버가 자동으로 배치 번호를 결정합니다.")
+    @Operation(summary = "차량 편성", description = "vehicleIds만 보내면 서버가 자동으로 배치 번호를 결정합니다. 편성 가능 status: 0(대기), 2(복귀중). 1(활동) 차량은 409 반환.")
     public ResponseEntity<VehicleAssignResponse> assignVehicles(
             @PathVariable Long orderId,
             @RequestBody VehicleAssignRequest req
@@ -40,7 +40,7 @@ public class DispatchOrderController {
     }
 
     @PostMapping("/{orderId}/return")
-    @Operation(summary = "차량 복귀", description = "차량 상태를 0(대기)로 변경합니다.")
+    @Operation(summary = "차량 복귀", description = "차량 상태를 2(복귀중)로 변경합니다. 대기(0) 전환은 자원배분 재편성 또는 수동 status PATCH로 처리합니다.")
     public ResponseEntity<String> returnVehicles(
             @PathVariable Long orderId,
             @RequestBody VehicleReturnRequest req
