@@ -42,20 +42,36 @@ public class VehiclesService {
         String sido = station.getSido();
         String rally = "경북".equals(sido) ? "X" : "O";
 
-        Vehicle v = Vehicle.builder()
-                .stationId(station.getId())
-                .sido(sido)
-                .callSign(req.getCallSign())
-                .typeName(req.getTypeName())
-                .capacity(req.getCapacity())
-                .personnel(req.getPersonnel())
-                .avlNumber(req.getAvlNumber())
-                .psLteNumber(req.getPsLteNumber())
-                .phoneNumber(req.getPhoneNumber())
-                .status(0)
-                .rallyPoint(rally)
-                .dispatchCount(0)
-                .build();
+        // 소프트 삭제된 동일 차량이 있으면 복원 후 반환 (DB 유니크 제약 충돌 방지)
+        Vehicle v = vehicleRepository
+                .findSoftDeletedByStationIdAndCallSign(station.getId(), req.getCallSign())
+                .map(deleted -> {
+                    deleted.setTypeName(req.getTypeName());
+                    deleted.setCapacity(req.getCapacity());
+                    deleted.setPersonnel(req.getPersonnel());
+                    deleted.setAvlNumber(req.getAvlNumber());
+                    deleted.setPsLteNumber(req.getPsLteNumber());
+                    deleted.setPhoneNumber(req.getPhoneNumber());
+                    deleted.setRallyPoint(rally);
+                    deleted.setStatus(0);
+                    deleted.setDispatchCount(0);
+                    deleted.setDeletedAt(null);
+                    return deleted;
+                })
+                .orElseGet(() -> Vehicle.builder()
+                        .stationId(station.getId())
+                        .sido(sido)
+                        .callSign(req.getCallSign())
+                        .typeName(req.getTypeName())
+                        .capacity(req.getCapacity())
+                        .personnel(req.getPersonnel())
+                        .avlNumber(req.getAvlNumber())
+                        .psLteNumber(req.getPsLteNumber())
+                        .phoneNumber(req.getPhoneNumber())
+                        .status(0)
+                        .rallyPoint(rally)
+                        .dispatchCount(0)
+                        .build());
 
         return toResponse(vehicleRepository.save(v));
     }
@@ -93,20 +109,36 @@ public class VehiclesService {
             String sido = station.getSido();
             String rally = "경북".equals(sido) ? "X" : "O";
 
-            Vehicle v = Vehicle.builder()
-                    .stationId(station.getId())
-                    .sido(sido)
-                    .typeName(req.getTypeName())
-                    .callSign(req.getCallSign())
-                    .capacity(req.getCapacity())
-                    .personnel(req.getPersonnel())
-                    .avlNumber(req.getAvlNumber())
-                    .psLteNumber(req.getPsLteNumber())
-                    .phoneNumber(req.getPhoneNumber())
-                    .status(0)
-                    .rallyPoint(rally)
-                    .dispatchCount(0)
-                    .build();
+            // 소프트 삭제된 동일 차량이 있으면 복원, 없으면 신규 생성
+            Vehicle v = vehicleRepository
+                    .findSoftDeletedByStationIdAndCallSign(station.getId(), req.getCallSign())
+                    .map(deleted -> {
+                        deleted.setTypeName(req.getTypeName());
+                        deleted.setCapacity(req.getCapacity());
+                        deleted.setPersonnel(req.getPersonnel());
+                        deleted.setAvlNumber(req.getAvlNumber());
+                        deleted.setPsLteNumber(req.getPsLteNumber());
+                        deleted.setPhoneNumber(req.getPhoneNumber());
+                        deleted.setRallyPoint(rally);
+                        deleted.setStatus(0);
+                        deleted.setDispatchCount(0);
+                        deleted.setDeletedAt(null);
+                        return deleted;
+                    })
+                    .orElseGet(() -> Vehicle.builder()
+                            .stationId(station.getId())
+                            .sido(sido)
+                            .typeName(req.getTypeName())
+                            .callSign(req.getCallSign())
+                            .capacity(req.getCapacity())
+                            .personnel(req.getPersonnel())
+                            .avlNumber(req.getAvlNumber())
+                            .psLteNumber(req.getPsLteNumber())
+                            .phoneNumber(req.getPhoneNumber())
+                            .status(0)
+                            .rallyPoint(rally)
+                            .dispatchCount(0)
+                            .build());
 
             vehicleRepository.save(v);
             inserted++;

@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface VehicleRepository extends JpaRepository<Vehicle, Long> {
 
@@ -15,6 +16,12 @@ public interface VehicleRepository extends JpaRepository<Vehicle, Long> {
 
     boolean existsByStationIdAndCallSignAndIdNotAndDeletedAtIsNull(
             Long stationId, String callSign, Long id
+    );
+
+    // ===== 소프트 삭제된 차량 조회 (@Where 필터 우회용 native query) =====
+    @Query(value = "SELECT * FROM vehicles WHERE station_id = :stationId AND call_sign = :callSign AND deleted_at IS NOT NULL LIMIT 1", nativeQuery = true)
+    Optional<Vehicle> findSoftDeletedByStationIdAndCallSign(
+            @Param("stationId") Long stationId, @Param("callSign") String callSign
     );
 
     // ===== 차종 목록 (삭제 안 된 차량만) =====
