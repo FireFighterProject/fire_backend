@@ -1,6 +1,8 @@
 package com.fire.fire_response_system.controller;
 
+import com.fire.fire_response_system.dto.weather.WeatherSmsSendRequest;
 import com.fire.fire_response_system.service.WeatherService;
+import com.fire.fire_response_system.service.WeatherSmsService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 public class WeatherController {
 
     private final WeatherService weatherService;
+    private final WeatherSmsService weatherSmsService;
 
     @GetMapping("/village-forecast")
     @Operation(
@@ -56,5 +59,24 @@ public class WeatherController {
                 baseDate, baseTime, nx, ny, pageNo, numOfRows
         );
         return ResponseEntity.ok(body);
+    }
+
+    @PostMapping("/send-forecast")
+    @Operation(
+            summary = "날씨 단기예보 SMS 발송",
+            description = """
+                    현재 시각 기준 가장 가까운 단기예보를 조회하여 지정 차량에게 SMS로 발송합니다.<br>
+                    - nx/ny: 기상청 격자 좌표<br>
+                    - vehicleId: SMS를 받을 차량 ID<br>
+                    """,
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "발송 성공"),
+                    @ApiResponse(responseCode = "400", description = "잘못된 요청"),
+                    @ApiResponse(responseCode = "500", description = "서버 내부 오류")
+            }
+    )
+    public ResponseEntity<String> sendForecast(@RequestBody WeatherSmsSendRequest req) {
+        weatherSmsService.sendWeatherForecast(req.getVehicleId(), req.getNx(), req.getNy());
+        return ResponseEntity.ok("날씨 예보 SMS 발송 완료");
     }
 }

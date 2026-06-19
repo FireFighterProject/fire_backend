@@ -66,7 +66,11 @@ public class SmsService {
         log.warn("[DEBUG] 문자 발송 시도: to={}, from={}, text={}", to, from, text);
         log.warn("[DEBUG] API KEY={}, SECRET 길이={}", apiKey, apiSecret != null ? apiSecret.length() : null);
 
-        // JSON Body
+        // JSON Body (줄바꿈·특수문자 이스케이프)
+        String escaped = text.replace("\\", "\\\\")
+                             .replace("\"", "\\\"")
+                             .replace("\n", "\\n")
+                             .replace("\r", "");
         String body = """
                 {
                   "message": {
@@ -75,7 +79,7 @@ public class SmsService {
                     "text": "%s"
                   }
                 }
-                """.formatted(to, from, text);
+                """.formatted(to, from, escaped);
 
         log.warn("[DEBUG] Request Body = {}", body);
 
