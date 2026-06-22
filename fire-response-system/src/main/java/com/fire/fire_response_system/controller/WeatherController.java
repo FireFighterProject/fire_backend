@@ -1,5 +1,7 @@
 package com.fire.fire_response_system.controller;
 
+import com.fire.fire_response_system.dto.weather.DayForecast;
+import com.fire.fire_response_system.service.WeatherForecastService;
 import com.fire.fire_response_system.service.WeatherService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -10,6 +12,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/weather")
 @RequiredArgsConstructor
@@ -17,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
 public class WeatherController {
 
     private final WeatherService weatherService;
+    private final WeatherForecastService weatherForecastService;
 
     @GetMapping("/village-forecast")
     @Operation(
@@ -56,6 +61,30 @@ public class WeatherController {
                 baseDate, baseTime, nx, ny, pageNo, numOfRows
         );
         return ResponseEntity.ok(body);
+    }
+
+    @GetMapping("/short-forecast")
+    @Operation(
+            summary = "날씨 단기예보 조회 (날짜별 요약)",
+            description = """
+                    현재 시각 기준 단기예보를 날짜별로 요약하여 반환합니다.<br>
+                    - baseDate/baseTime은 자동 계산됩니다.<br>
+                    - 날짜별 최저/최고기온, 하늘상태, 강수확률, 강수형태를 포함합니다.<br>
+                    """,
+            parameters = {
+                    @Parameter(name = "nx", description = "예보지점 X 좌표", required = true, example = "55"),
+                    @Parameter(name = "ny", description = "예보지점 Y 좌표", required = true, example = "127")
+            },
+            responses = {
+                    @ApiResponse(responseCode = "200", description = "조회 성공"),
+                    @ApiResponse(responseCode = "500", description = "서버 내부 오류")
+            }
+    )
+    public ResponseEntity<List<DayForecast>> getShortForecast(
+            @RequestParam int nx,
+            @RequestParam int ny
+    ) {
+        return ResponseEntity.ok(weatherForecastService.getShortForecast(nx, ny));
     }
 
 }
